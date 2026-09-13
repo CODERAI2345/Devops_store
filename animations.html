@@ -1,0 +1,266 @@
+<!--
+=====================================================================
+DEVOPS ANIMATIONS — 3 standalone, framework-agnostic snippets
+Each block below is self-contained: HTML + CSS + JS.
+Copy the HTML into your markup, the CSS into your stylesheet,
+and the JS into a <script> tag or JS file loaded on the page.
+=====================================================================
+-->
+
+
+<!-- =====================================================================
+1) KUBERNETES POD SCALING ANIMATION (isometric cube style)
+===================================================================== -->
+
+<!-- HTML -->
+<div class="pod-card">
+  <div class="pod-card-head">
+    <span class="pod-card-title">Deployment: web-app</span>
+    <span class="pod-card-status"><span class="status-dot"></span> Healthy</span>
+  </div>
+  <div class="cluster" id="cluster"></div>
+  <div class="pod-status-bar">
+    <span>Pods scaling on 3 nodes</span>
+    <span><b id="readyCount">0</b>/8 Ready</span>
+  </div>
+</div>
+
+<style>
+.pod-card{
+  background:#111827; border:1px solid #1f2937; border-radius:16px; padding:22px;
+  max-width:420px; font-family:-apple-system,Segoe UI,Roboto,sans-serif; color:#e5e7eb;
+}
+.pod-card-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; font-size:14px;}
+.pod-card-title{font-weight:700;}
+.pod-card-status{display:flex; align-items:center; gap:6px; font-size:12.5px; color:#22c55e;}
+.status-dot{width:7px; height:7px; border-radius:50%; background:#22c55e; box-shadow:0 0 6px #22c55e; animation:blinkDot 1.6s ease-in-out infinite;}
+@keyframes blinkDot{50%{opacity:.4;}}
+
+.cluster{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; min-height:170px; align-content:center;}
+.pod{aspect-ratio:1; opacity:0; transform:scale(.4) translateY(6px); display:flex; align-items:center; justify-content:center;}
+.pod.spawn{animation:podSpawn .55s cubic-bezier(.34,1.56,.64,1) forwards;}
+@keyframes podSpawn{ to{opacity:1; transform:scale(1) translateY(0);} }
+.pod svg{width:100%; height:100%;}
+.pod-cube-outline{stroke:#374151; fill:#111827; transition:stroke .3s, fill .3s;}
+.pod.pending .pod-cube-outline{stroke:#f97316; fill:#1f130a;}
+.pod.running .pod-cube-outline{stroke:#22c55e; fill:#0d1f14;}
+.pod.running{animation:podFloat 3s ease-in-out infinite;}
+@keyframes podFloat{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);} }
+
+.pod-status-bar{
+  display:flex; justify-content:space-between; align-items:center; margin-top:18px;
+  padding-top:16px; border-top:1px solid #1f2937; font-size:13px; color:#9ca3af;
+}
+.pod-status-bar b{color:#22c55e;}
+
+@media (prefers-reduced-motion: reduce){
+  .pod{opacity:1; transform:none; animation:none;}
+  .pod.running{animation:none;}
+}
+</style>
+
+<script>
+function cubeSVG(){
+  return `<svg viewBox="0 0 40 40"><g class="pod-cube-outline" stroke-width="2" stroke-linejoin="round">
+    <path d="M20 4 L34 12 L34 28 L20 36 L6 28 L6 12 Z"/>
+    <path d="M20 4 L20 20 M6 12 L20 20 L34 12 M20 20 L20 36" stroke-width="1.4"/>
+  </g></svg>`;
+}
+
+const cluster = document.getElementById('cluster');
+const readyCount = document.getElementById('readyCount');
+const TOTAL_PODS = 8;
+
+function runPodAnimation(){
+  cluster.innerHTML = '';
+  let ready = 0;
+  readyCount.textContent = '0';
+  for(let i = 0; i < TOTAL_PODS; i++){
+    const pod = document.createElement('div');
+    pod.className = 'pod';
+    pod.innerHTML = cubeSVG();
+    cluster.appendChild(pod);
+
+    setTimeout(() => pod.classList.add('spawn', 'pending'), i * 160);
+
+    setTimeout(() => {
+      pod.classList.remove('pending');
+      pod.classList.add('running');
+      ready++;
+      readyCount.textContent = ready;
+    }, i * 160 + 850);
+  }
+}
+
+runPodAnimation();
+setInterval(runPodAnimation, 9000); // re-run every 9s; remove setInterval to run once
+</script>
+
+
+<!-- =====================================================================
+2) LINUX TERMINAL LOG-SEARCH ANIMATION
+===================================================================== -->
+
+<!-- HTML -->
+<div class="terminal">
+  <div class="terminal-bar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <span class="terminal-title">user@devops-desk: ~/logs</span>
+  </div>
+  <div class="terminal-body">
+    <div><span class="prompt">$</span> <span id="typedCmd"></span></div>
+    <div id="termResults"></div>
+  </div>
+</div>
+
+<style>
+.terminal{
+  max-width:420px; background:#0d1117; border:1px solid #1f2937; border-radius:10px;
+  overflow:hidden; font-family:'Courier New', monospace; font-size:13.5px;
+}
+.terminal-bar{background:#161b22; padding:10px 14px; display:flex; align-items:center; gap:8px;}
+.terminal-bar .dot{width:11px; height:11px; border-radius:50%;}
+.terminal-bar .red{background:#ff5f56;}
+.terminal-bar .yellow{background:#ffbd2e;}
+.terminal-bar .green{background:#27c93f;}
+.terminal-title{color:#9ca3af; font-size:12px; margin-left:8px;}
+.terminal-body{padding:16px; min-height:160px; color:#c9d1d9; line-height:1.7;}
+.prompt{color:#22c55e;}
+#typedCmd::after{content:'▌'; animation:blink 1s step-start infinite; color:#f97316;}
+@keyframes blink{50%{opacity:0;}}
+.result-line{opacity:0; animation:fadeIn .3s ease forwards; color:#9ca3af;}
+.result-line .file{color:#a855f7;}
+.result-line .match{color:#f97316; font-weight:bold;}
+@keyframes fadeIn{to{opacity:1;}}
+
+@media (prefers-reduced-motion: reduce){
+  #typedCmd::after{animation:none;}
+  .result-line{opacity:1; animation:none;}
+}
+</style>
+
+<script>
+const command = "grep -r 'ERROR' /var/log/app --include=*.log";
+const typedEl = document.getElementById('typedCmd');
+const resultsEl = document.getElementById('termResults');
+
+const fakeResults = [
+  { file: 'app-2026-09-01.log', line: "12:04:21 <span class='match'>ERROR</span> connection timeout: db-primary" },
+  { file: 'app-2026-09-03.log', line: "09:41:02 <span class='match'>ERROR</span> failed health check on pod web-7f9c" },
+  { file: 'app-2026-09-05.log', line: "22:17:55 <span class='match'>ERROR</span> disk usage above threshold (91%)" },
+];
+
+function typeCommand(cb){
+  typedEl.textContent = '';
+  let i = 0;
+  const iv = setInterval(() => {
+    typedEl.textContent += command[i];
+    i++;
+    if(i >= command.length){
+      clearInterval(iv);
+      setTimeout(cb, 400);
+    }
+  }, 32);
+}
+
+function showResults(){
+  resultsEl.innerHTML = '';
+  fakeResults.forEach((r, idx) => {
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.className = 'result-line';
+      div.innerHTML = `<span class="file">${r.file}</span>: ${r.line}`;
+      resultsEl.appendChild(div);
+    }, idx * 450);
+  });
+}
+
+function runTerminalLoop(){
+  typedEl.textContent = '';
+  resultsEl.innerHTML = '';
+  typeCommand(showResults);
+}
+
+runTerminalLoop();
+setInterval(runTerminalLoop, 9000); // re-run every 9s; remove setInterval to run once
+</script>
+
+
+<!-- =====================================================================
+3) CI/CD PIPELINE FLOW ANIMATION
+===================================================================== -->
+
+<!-- HTML -->
+<div class="pipeline-card">
+  <div class="pipeline-track">
+    <div class="pipeline-line"><div class="pipeline-line-fill" id="pipelineFill"></div></div>
+    <div class="stage" data-stage="0"><div class="stage-dot">📝</div><div class="stage-label">Build</div></div>
+    <div class="stage" data-stage="1"><div class="stage-dot">🧪</div><div class="stage-label">Test</div></div>
+    <div class="stage" data-stage="2"><div class="stage-dot">🚀</div><div class="stage-label">Deploy</div></div>
+    <div class="stage" data-stage="3"><div class="stage-dot">📈</div><div class="stage-label">Monitor</div></div>
+  </div>
+  <div class="pipeline-status" id="pipelineStatus">Waiting to start…</div>
+</div>
+
+<style>
+.pipeline-card{
+  max-width:420px; background:#0d1117; border:1px solid #1f2937; border-radius:14px;
+  padding:30px 20px; font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+}
+.pipeline-track{position:relative; display:flex; justify-content:space-between; align-items:center;}
+.pipeline-line{position:absolute; top:22px; left:22px; right:22px; height:2px; background:#2a3548; z-index:0;}
+.pipeline-line-fill{position:absolute; top:0; left:0; height:100%; width:0%; background:#22c55e; transition:width 1.4s linear;}
+.stage{position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:10px; width:70px;}
+.stage-dot{
+  width:44px; height:44px; border-radius:50%; background:#111827; border:2px solid #2a3548;
+  display:flex; align-items:center; justify-content:center; font-size:18px;
+  transition:border-color .3s, background .3s, transform .3s;
+}
+.stage.active .stage-dot{border-color:#22c55e; background:#0d1f14; transform:scale(1.1);}
+.stage.done .stage-dot{border-color:#22c55e; background:#22c55e; color:#0a0e1a;}
+.stage-label{font-size:12px; color:#9ca3af; text-align:center;}
+.stage.active .stage-label, .stage.done .stage-label{color:#e5e7eb;}
+.pipeline-status{margin-top:24px; text-align:center; font-size:13px; color:#9ca3af; font-family:'Courier New',monospace;}
+
+@media (prefers-reduced-motion: reduce){
+  .stage-dot{transition:none;}
+  .pipeline-line-fill{transition:none;}
+}
+</style>
+
+<script>
+const stages = document.querySelectorAll('.stage');
+const pipelineFill = document.getElementById('pipelineFill');
+const pipelineStatus = document.getElementById('pipelineStatus');
+const stageNames = ['Building application…', 'Running test suite…', 'Deploying to production…', 'Monitoring rollout…'];
+
+function runPipeline(){
+  stages.forEach(s => s.classList.remove('active', 'done'));
+  pipelineFill.style.transition = 'none';
+  pipelineFill.style.width = '0%';
+  void pipelineFill.offsetWidth; // force reflow so the transition restarts
+  pipelineFill.style.transition = 'width 1.4s linear';
+  pipelineStatus.textContent = 'Starting pipeline…';
+
+  stages.forEach((stage, i) => {
+    setTimeout(() => {
+      stages.forEach(s => s.classList.remove('active'));
+      stage.classList.add('active');
+      pipelineStatus.textContent = stageNames[i];
+      pipelineFill.style.width = `${((i + 1) / stages.length) * 100}%`;
+    }, i * 1500);
+
+    setTimeout(() => {
+      stage.classList.remove('active');
+      stage.classList.add('done');
+    }, i * 1500 + 1300);
+  });
+
+  setTimeout(() => {
+    pipelineStatus.textContent = '✓ Pipeline completed successfully';
+  }, stages.length * 1500);
+}
+
+runPipeline();
+setInterval(runPipeline, stages.length * 1500 + 2500); // re-run on loop; remove setInterval to run once
+</script>

@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: public_items
+    // Document ID: {itemId} (stringified number)
+    // Fields:
+    //   - id: number (required)
+    //   - type: string (required, enum: 'yt', 'ys', 'li', 'lp', 'job', 'blog', 'email')
+    //   - url: string (required)
+    //   - title: string (required)
+    //   - author: string (optional)
+    //   - description: string (optional)
+    //   - tags: list of strings (optional)
+    //   - starred: boolean (optional)
+    //   - company: string (optional)
+    //   - email: string (optional)
+    //   - location: string (optional)
+    //   - role: string (optional)
+    //   - thumbnail: string (optional)
+    //   - vid: string (optional)
+    //   - date: string (optional)
+    //   - ts: number (required)
+    //   - platform: string (optional)
+    // ===============================================================
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidString(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    function isValidOptionalString(field, maxLen) {
+      return !(field in request.resource.data) || request.resource.data[field] == null || isValidString(request.resource.data[field], maxLen);
+    }
+
+    function isValidTags(tags) {
+      return tags == null || (tags is list && tags.size() <= 50);
+    }
+
+    function isValidItem() {
+      let data = request.resource.data;
+      return hasRequiredFields(['id', 'type', 'url', 'title', 'ts']) &&
+             data.id is number &&
+             data.type in ['yt', 'ys', 'li', 'lp', 'job', 'blog', 'email', 'hremail', 'ypl', 'tw', 'git', 'ig'] &&
+             isValidString(data.url, 10000) &&
+             (data.title is string || data.title == null) &&
+             data.ts is number &&
+             isValidOptionalString('author', 2000) &&
+             isValidOptionalString('description', 20000) &&
+             (!( 'tags' in data ) || isValidTags(data.tags)) &&
+             (!( 'starred' in data ) || data.starred is bool) &&
+             isValidOptionalString('company', 2000) &&
+             isValidOptionalString('email', 2000) &&
+             isValidOptionalString('location', 2000) &&
+             isValidOptionalString('role', 2000) &&
+             isValidOptionalString('thumbnail', 1000000) &&
+             isValidOptionalString('vid', 1000) &&
+             isValidOptionalString('date', 1000) &&
+             isValidOptionalString('platform', 2000) &&
+             isValidOptionalString('handle', 2000) &&
+             isValidOptionalString('heading', 2000);
+    }
+
+    match /public_items/{itemId} {
+      allow read: if true;
+      allow create: if isValidItem();
+      allow update: if isValidItem();
+      allow delete: if true;
+    }
+  }
+}

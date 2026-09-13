@@ -1,0 +1,5 @@
+{
+  "name": "Central Hub",
+  "description": "A tool for saving and extracting information from YouTube videos, LinkedIn profiles, and LinkedIn posts using AI.",
+  "requestFramePermissions": []
+}
