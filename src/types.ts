@@ -1,4 +1,4 @@
-export type ItemType = "yt" | "ys" | "ypl" | "lp" | "blog" | "email" | "tw" | "git" | "li" | "ig";
+export type ItemType = "yt" | "ys" | "ypl" | "lp" | "blog" | "email" | "tw" | "git" | "li" | "ig" | "igp" | "th" | "web" | "lab";
 
 export interface BaseItem {
   id: number | string;
@@ -85,7 +85,36 @@ export interface IGItem extends BaseItem {
   tags?: string[];
 }
 
-export type HubItem = IGItem | YTItem | YSItem | YPLItem | LIItem | LPItem | BlogItem | EmailItem | TWItem | GitItem;
+export interface IGPItem extends BaseItem {
+  type: "igp";
+  shortcode?: string;
+  tags?: string[];
+}
+
+export interface THItem extends BaseItem {
+  type: "th";
+  handle?: string;
+  heading?: string;
+  tags?: string[];
+  shortcode?: string;
+}
+
+
+export interface WebItem extends BaseItem {
+  type: "web";
+  tags?: string[];
+  domain?: string;
+}
+
+export interface LabItem extends BaseItem {
+  type: "lab";
+  tags?: string[];
+  platform?: string;
+  duration?: string;
+  difficulty?: string;
+}
+
+export type HubItem = IGItem | IGPItem | YTItem | YSItem | YPLItem | LIItem | LPItem | BlogItem | EmailItem | TWItem | GitItem | THItem | WebItem | LabItem;
 
 export interface HubDB {
   yt: YTItem[];
@@ -99,4 +128,8 @@ export interface HubDB {
   tw: TWItem[];
   git: GitItem[];
   ig: IGItem[];
+  igp: IGPItem[];
+  th: THItem[];
+  web: WebItem[];
+  lab: LabItem[];
 }

@@ -46,7 +46,7 @@ service cloud.firestore {
       let data = request.resource.data;
       return hasRequiredFields(['id', 'type', 'url', 'title', 'ts']) &&
              data.id is number &&
-             data.type in ['yt', 'ys', 'li', 'lp', 'job', 'blog', 'email', 'hremail', 'ypl', 'tw', 'git', 'ig'] &&
+             data.type in ['yt', 'ys', 'li', 'lp', 'job', 'blog', 'email', 'hremail', 'ypl', 'tw', 'git', 'ig', 'igp', 'th', 'lab', 'web'] &&
              isValidString(data.url, 10000) &&
              (data.title is string || data.title == null) &&
              data.ts is number &&

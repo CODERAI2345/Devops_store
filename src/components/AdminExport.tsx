@@ -76,13 +76,13 @@ export default function AdminExport() {
     setIsExportingAll(false);
   };
 
-  if (isInitialLoading || !db) return <div className="min-h-screen bg-[#080b1d] flex items-center justify-center text-white"><Loader2 className="w-8 h-8 animate-spin text-orange-500" /></div>;
+  if (isInitialLoading || !db) return <div className="min-h-screen bg-white/[0.03] flex items-center justify-center text-white"><Loader2 className="w-8 h-8 animate-spin text-fuchsia-400" /></div>;
 
   const availableCollections = Object.keys(COLLECTION_MAP);
   const inIframe = window.self !== window.top;
 
   return (
-    <div className="min-h-screen bg-[#080b1d] text-white p-6 sm:p-12 font-sans selection:bg-orange-500/30">
+    <div className="min-h-screen bg-white/[0.03] text-white p-6 sm:p-12 font-sans selection:bg-gradient-to-r from-violet-600 to-fuchsia-600/30">
       <div className="max-w-4xl mx-auto space-y-8">
         
         {inIframe && (
@@ -100,13 +100,13 @@ export default function AdminExport() {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => navigate('/admin/dashboard')}
-              className="p-2 hover:bg-white/5 rounded-lg transition text-slate-400 hover:text-white"
+              className="p-2 hover:bg-white/[0.03] rounded-lg transition text-slate-400 hover:text-white"
             >
               <ArrowLeft size={20} />
             </button>
             <div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Settings className="text-orange-400" />
+                <Settings className="text-fuchsia-400" />
                 Admin Console
               </h1>
               <p className="text-slate-400 text-sm mt-1">Secure Data Export Portal</p>
@@ -121,7 +121,7 @@ export default function AdminExport() {
         {/* Export Card */}
         <div className="bg-[#11152c] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
           {/* Decorative Glow */}
-          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-gradient-to-r from-violet-600 to-fuchsia-600/5 rounded-full blur-3xl pointer-events-none" />
           
           <div className="relative z-10 flex flex-col sm:flex-row gap-12">
             
@@ -142,7 +142,7 @@ export default function AdminExport() {
                     <select 
                       value={selectedCollection}
                       onChange={(e) => setSelectedCollection(e.target.value)}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm appearance-none focus:outline-none focus:border-orange-500/50 transition pr-10"
+                      className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm appearance-none focus:outline-none focus:border-violet-500/50 transition pr-10"
                     >
                       <option value="" disabled>Select a collection...</option>
                       {availableCollections.map(key => (
@@ -165,8 +165,8 @@ export default function AdminExport() {
             </div>
 
             {/* Divider */}
-            <div className="hidden sm:block w-px bg-white/10" />
-            <div className="sm:hidden h-px bg-white/10 w-full" />
+            <div className="hidden sm:block w-px bg-white/[0.05]" />
+            <div className="sm:hidden h-px bg-white/[0.05] w-full" />
 
             {/* Right side: Global Export */}
             <div className="flex-1 space-y-6">
@@ -184,7 +184,7 @@ export default function AdminExport() {
                    {availableCollections.map(key => (
                      <div key={key} className="text-xs text-slate-300 flex items-center justify-between gap-2">
                        <span className="flex items-center gap-2">
-                         <Check size={14} className={db[key]?.length > 0 ? "text-emerald-500" : "text-slate-600"} />
+                         <Check size={14} className={db[key]?.length > 0 ? "text-emerald-500" : "text-slate-300"} />
                          <span className={db[key]?.length === 0 ? "opacity-50" : ""}>{COLLECTION_MAP[key]}</span>
                        </span>
                      </div>

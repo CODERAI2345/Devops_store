@@ -34,8 +34,12 @@ export function parseSlug(url: string, type: "li" | "lp") {
   return "";
 }
 
-export function classifyUrl(u: string): "yt" | "ys" | "ypl" | "li" | "lp" | "tw" | "git" | "blog" | "email" | "ig" | null {
-  if (u.toLowerCase().includes("instagram.com") || u.toLowerCase().includes("instagr.am")) return "ig";
+export function classifyUrl(u: string): "yt" | "ys" | "ypl" | "li" | "lp" | "tw" | "git" | "blog" | "email" | "ig" | "igp" | "th" | "web" | "lab" | null {
+  if (u.toLowerCase().includes("instagram.com") || u.toLowerCase().includes("instagr.am")) {
+    if (u.toLowerCase().includes("/p/")) return "igp";
+    return "ig";
+  }
+  if (u.toLowerCase().includes("threads.net")) return "th";
   const l = u.toLowerCase();
   if (l.includes("github.com") && l.split("/").length >= 4) return "git";
   if (l.includes("youtube.com/playlist")) return "ypl";
@@ -59,6 +63,8 @@ export function classifyUrl(u: string): "yt" | "ys" | "ypl" | "li" | "lp" | "tw"
   )
     return "blog";
   if (l.startsWith("mailto:")) return "email";
+  if (l.includes("udemy.com") || l.includes("coursera.org") || l.includes("pluralsight.com") || l.includes("kodekloud.com") || l.includes("kode.wiki") || l.includes("acloudguru.com")) return "lab";
+  if (u.startsWith("http")) return "web";
   return null;
 }
 
@@ -201,6 +207,18 @@ export function extractInstagramShortcode(url: string) {
     const u = new URL(url);
     if (!u.hostname.includes('instagram.com') && !u.hostname.includes('instagr.am')) return null;
     const m = u.pathname.match(/\/(?:p|reel|reels|tv)\/([^\/?#]+)/i);
+    return m ? m[1] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+
+export function extractThreadsShortcode(url: string) {
+  try {
+    const u = new URL(url);
+    if (!u.hostname.includes('threads.net')) return null;
+    const m = u.pathname.match(/\/(?:t|post)\/([^\/?#]+)/i);
     return m ? m[1] : null;
   } catch (e) {
     return null;

@@ -1,0 +1,33 @@
+{
+  "error": {
+    "code": 403,
+    "message": "Permission denied on resource project ai-studio-eeeb7d35-dd40-41d4-9fe3-cf5abc43ee8f.",
+    "status": "PERMISSION_DENIED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "CONSUMER_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "containerInfo": "ai-studio-eeeb7d35-dd40-41d4-9fe3-cf5abc43ee8f",
+          "consumer": "projects/ai-studio-eeeb7d35-dd40-41d4-9fe3-cf5abc43ee8f",
+          "service": "firestore.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "Permission denied on resource project ai-studio-eeeb7d35-dd40-41d4-9fe3-cf5abc43ee8f."
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.Help",
+        "links": [
+          {
+            "description": "Google developers console",
+            "url": "https://console.developers.google.com"
+          }
+        ]
+      }
+    ]
+  }
+}

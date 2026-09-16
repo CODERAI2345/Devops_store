@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { Route53Icon, WafIcon, AlbIcon, Ec2Icon, RdsIcon, ElastiCacheIcon } from "./AwsIcons";
 import { Database, Globe, Server, Users, ShieldCheck, Cloud, Network, HardDrive, Zap, Box, Lock, CheckCircle2 } from 'lucide-react';
 
 export function PipelineAnimation() {
@@ -91,31 +92,31 @@ export function PipelineAnimation() {
 
           {/* Edge */}
           <div className="absolute left-[200px] top-[210px]">
-            <AwsNode title="Amazon Route 53" icon={<Globe className="w-5 h-5"/>} color="text-purple-400" border="border-purple-500/50" />
+            <AwsNode title="Amazon Route 53" icon={<Route53Icon className="w-6 h-6"/>} color="text-purple-400" border="border-purple-500/50" />
           </div>
           <div className="absolute left-[200px] top-[320px]">
-            <AwsNode title="AWS WAF" icon={<ShieldCheck className="w-5 h-5"/>} color="text-purple-400" border="border-purple-500/50" />
+            <AwsNode title="AWS WAF" icon={<WafIcon className="w-6 h-6"/>} color="text-purple-400" border="border-purple-500/50" />
           </div>
 
           {/* Public Subnet - ALB */}
           <div className="absolute left-[450px] top-[260px]">
-            <AwsNode title="Application Load Balancer" icon={<Network className="w-5 h-5"/>} color="text-cyan-400" border="border-cyan-500/50" />
+            <AwsNode title="Application Load Balancer" icon={<AlbIcon className="w-6 h-6"/>} color="text-cyan-400" border="border-cyan-500/50" />
           </div>
 
           {/* Private Subnet - Compute */}
           <div className="absolute left-[660px] top-[180px]">
-            <AwsNode title="Amazon EC2 (App)" icon={<Server className="w-5 h-5"/>} color="text-orange-400" border="border-orange-500/50" info="us-east-1a" />
+            <AwsNode title="Amazon EC2 (App)" icon={<Ec2Icon className="w-6 h-6"/>} color="text-orange-400" border="border-orange-500/50" info="us-east-1a" />
           </div>
           <div className="absolute left-[660px] top-[370px]">
-            <AwsNode title="Amazon EC2 (App)" icon={<Server className="w-5 h-5"/>} color="text-orange-400" border="border-orange-500/50" info="us-east-1b" />
+            <AwsNode title="Amazon EC2 (App)" icon={<Ec2Icon className="w-6 h-6"/>} color="text-orange-400" border="border-orange-500/50" info="us-east-1b" />
           </div>
 
           {/* Data Subnet */}
           <div className="absolute left-[900px] top-[180px]">
-            <AwsNode title="Amazon RDS (Primary)" icon={<Database className="w-5 h-5"/>} color="text-emerald-400" border="border-emerald-500/50" />
+            <AwsNode title="Amazon RDS (Primary)" icon={<RdsIcon className="w-6 h-6"/>} color="text-emerald-400" border="border-emerald-500/50" />
           </div>
           <div className="absolute left-[900px] top-[290px]">
-            <AwsNode title="Amazon ElastiCache" icon={<Zap className="w-5 h-5"/>} color="text-emerald-400" border="border-emerald-500/50" />
+            <AwsNode title="Amazon ElastiCache" icon={<ElastiCacheIcon className="w-6 h-6"/>} color="text-emerald-400" border="border-emerald-500/50" />
           </div>
 
           {/* Outside VPC - S3 */}

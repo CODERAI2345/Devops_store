@@ -12,7 +12,7 @@ import {
   User,
   Send,
   Github, Globe2
-, Instagram, Edit2} from "lucide-react";
+, Instagram, Edit2, Link as LinkIcon } from "lucide-react";
 
 interface CardProps {
   key?: React.Key;
@@ -72,15 +72,15 @@ export function LazyIframe({ src, title, className, ...props }: any) {
   );
 }
 
-export function YTCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+export const YTCard = React.memo(function YTCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.05] hover:border-white/[0.15] hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 cursor-pointer flex flex-col"
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col"
       onClick={onClick}
     >
-      <div className="relative aspect-video w-full overflow-hidden bg-black/40">
+      <div className="relative aspect-video w-full overflow-hidden bg-white/[0.03]">
         {item.thumbnail ? (
-          <img loading="lazy"
+          <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy"
             src={item.thumbnail}
             alt={item.title}
             className="w-full h-full object-cover group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out"
@@ -90,12 +90,12 @@ export function YTCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
             <PlayCircle className="w-12 h-12" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
         
         {/* Top actions */}
         <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 translate-y-[-10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
            <button
-            className={`w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center transition-colors border border-white/10 ${item.starred ? "text-amber-400 bg-amber-400/10 border-amber-400/20" : "text-white/70 hover:text-white hover:bg-white/20"}`}
+            className={`w-8 h-8 rounded-full bg-white/[0.03]  flex items-center justify-center transition-colors border border-white/10 ${item.starred ? "text-amber-400 bg-amber-400/10 border-amber-400/20" : "text-slate-200 hover:text-white hover:bg-black/20/20"}`}
             onClick={(e) => {
               e.stopPropagation();
               onStar();
@@ -104,7 +104,7 @@ export function YTCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
             <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
           </button>
           <button
-            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 border border-white/10 transition-colors"
+            className="w-8 h-8 rounded-full bg-white/[0.03]  flex items-center justify-center text-slate-200 hover:text-white hover:bg-black/20/20 border border-white/10 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               onCopy();
@@ -137,17 +137,17 @@ export function YTCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
       </div>
     </div>
   );
-}
+});
 
-export function YPLCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+export const YPLCard = React.memo(function YPLCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.05] hover:border-white/[0.15] hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 cursor-pointer flex flex-col"
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col"
       onClick={onClick}
     >
-      <div className="relative aspect-video w-full overflow-hidden bg-black/40">
+      <div className="relative aspect-video w-full overflow-hidden bg-white/[0.03]">
         {item.thumbnail ? (
-          <img loading="lazy"
+          <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy"
             src={item.thumbnail}
             alt={item.title}
             className="w-full h-full object-cover group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out"
@@ -157,12 +157,12 @@ export function YPLCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) 
             <PlayCircle className="w-12 h-12" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
         
         {/* Top actions */}
         <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 translate-y-[-10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
            <button
-            className={`w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center transition-colors border border-white/10 ${item.starred ? "text-amber-400 bg-amber-400/10 border-amber-400/20" : "text-white/70 hover:text-white hover:bg-white/20"}`}
+            className={`w-8 h-8 rounded-full bg-white/[0.03]  flex items-center justify-center transition-colors border border-white/10 ${item.starred ? "text-amber-400 bg-amber-400/10 border-amber-400/20" : "text-slate-200 hover:text-white hover:bg-black/20/20"}`}
             onClick={(e) => {
               e.stopPropagation();
               onStar();
@@ -171,7 +171,7 @@ export function YPLCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) 
             <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
           </button>
           <button
-            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 border border-white/10 transition-colors"
+            className="w-8 h-8 rounded-full bg-white/[0.03]  flex items-center justify-center text-slate-200 hover:text-white hover:bg-black/20/20 border border-white/10 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               onCopy();
@@ -204,17 +204,17 @@ export function YPLCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) 
       </div>
     </div>
   );
-}
+});
 
-export function YSCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+export const YSCard = React.memo(function YSCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.05] hover:border-white/[0.15] hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 cursor-pointer flex flex-col"
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col"
       onClick={onClick}
     >
-      <div className="relative aspect-[9/16] w-full max-h-[300px] overflow-hidden bg-black/40">
+      <div className="relative aspect-[9/16] w-full max-h-[300px] overflow-hidden bg-white/[0.03]">
         {item.thumbnail ? (
-          <img loading="lazy"
+          <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy"
             src={item.thumbnail}
             alt={item.title}
             className="w-full h-full object-cover group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out"
@@ -224,12 +224,12 @@ export function YSCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
              <PlayCircle className="w-12 h-12" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
         
         {/* Top actions */}
         <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 translate-y-[-10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
            <button
-            className={`w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center transition-colors border border-white/10 ${item.starred ? "text-amber-400 bg-amber-400/10 border-amber-400/20" : "text-white/70 hover:text-white hover:bg-white/20"}`}
+            className={`w-8 h-8 rounded-full bg-white/[0.03]  flex items-center justify-center transition-colors border border-white/10 ${item.starred ? "text-amber-400 bg-amber-400/10 border-amber-400/20" : "text-slate-200 hover:text-white hover:bg-black/20/20"}`}
             onClick={(e) => {
               e.stopPropagation();
               onStar();
@@ -238,7 +238,7 @@ export function YSCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
             <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
           </button>
           <button
-            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 border border-white/10 transition-colors"
+            className="w-8 h-8 rounded-full bg-white/[0.03]  flex items-center justify-center text-slate-200 hover:text-white hover:bg-black/20/20 border border-white/10 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               onCopy();
@@ -271,12 +271,12 @@ export function YSCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
       </div>
     </div>
   );
-}
+});
 
-export function LICard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+export const LICard = React.memo(function LICard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   return (
     <div
-      className="group h-[500px] flex flex-col relative overflow-hidden rounded-xl bg-[#1d2226] border border-[#38434f] hover:border-[#4b5563] transition-all cursor-pointer"
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col h-[500px]"
       onClick={onClick}
     >
       {/* Header */}
@@ -324,7 +324,7 @@ export function LICard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
             {/* Profile Picture */}
             <div className="relative shrink-0">
               {item.thumbnail ? (
-                <img loading="lazy"
+                <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy"
                   src={item.thumbnail}
                   alt={item.title || "Profile avatar"}
                   referrerPolicy="no-referrer"
@@ -385,31 +385,31 @@ export function LICard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
       </div>
     </div>
   );
-}
+});
 
 const getCategoryStyle = (heading: string) => {
   const h = (heading || "").trim().toUpperCase();
-  if (h.includes("AWS")) return { bg: "bg-orange-500/10 text-orange-400 border-orange-500/20", label: "🔥 AWS" };
+  if (h.includes("AWS")) return { bg: "bg-fuchsia-500/10 text-fuchsia-400 border-orange-500/20", label: "🔥 AWS" };
   if (h.includes("AZURE")) return { bg: "bg-blue-500/10 text-blue-400 border-blue-500/20", label: "💻 Azure" };
   if (h.includes("DEVOPS")) return { bg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20", label: "⚙️ DevOps" };
-  if (h.includes("TERRAFORM")) return { bg: "bg-violet-500/10 text-violet-400 border-violet-500/20", label: "☁️ Terraform" };
+  if (h.includes("TERRAFORM")) return { bg: "bg-gradient-to-r from-violet-500 to-fuchsia-500/10 text-violet-400 border-violet-500/20", label: "☁️ Terraform" };
   if (h.includes("LINUX")) return { bg: "bg-amber-500/10 text-amber-400 border-amber-500/20", label: "🐧 Linux" };
   if (h.includes("INTERVIEW")) return { bg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", label: "🎯 Interview" };
   if (h.includes("CAREER") || h.includes("HIRING") || h.includes("JOB")) return { bg: "bg-teal-500/10 text-teal-400 border-teal-500/20", label: "💼 Career" };
   if (h.includes("AI") || h.includes("ML") || h.includes("OPENAI") || h.includes("CHATGPT") || h.includes("GENAI")) return { bg: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20", label: "✨ AI" };
   if (h.includes("NETWORK")) return { bg: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20", label: "🌐 Networking" };
-  return { bg: "bg-white/5 text-white/60 border-white/10", label: heading || "LinkedIn Post" };
+  return { bg: "bg-white/[0.03] text-white/60 border-white/10", label: heading || "LinkedIn Post" };
 };
 
 
 
-export function LPCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+export const LPCard = React.memo(function LPCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   const embedUrl = getLinkedInEmbedUrl(item.url);
   const extractedTopic = extractTopicFromLinkedInUrl(item.url);
 
   return (
     <div
-      className="group h-[500px] flex flex-col relative overflow-hidden rounded-xl bg-[#1d2226] border border-[#38434f] hover:border-[#4b5563] transition-all cursor-pointer"
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col h-[500px]"
       onClick={onClick}
     >
       {/* Header */}
@@ -487,7 +487,7 @@ export function LPCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
 
               {item.thumbnail && (
                 <div className="mt-2 -mx-4 border-y border-[#38434f] bg-black">
-                   <img loading="lazy" src={item.thumbnail} alt="Post image" className="w-full h-auto max-h-64 object-contain" />
+                   <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy" src={item.thumbnail} alt="Post image" className="w-full h-auto max-h-64 object-contain" />
                 </div>
               )}
           </div>
@@ -495,24 +495,24 @@ export function LPCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
       </div>
     </div>
   );
-}
+});
 
-export function BlogCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+export const BlogCard = React.memo(function BlogCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.05] hover:border-white/[0.15] hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 cursor-pointer flex flex-col"
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col"
       onClick={onClick}
     >
       {item.thumbnail && (
-          <div className="relative aspect-video w-full overflow-hidden bg-black/40 border-b border-white/5">
-             <img loading="lazy" src={item.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out" />
-             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
+          <div className="relative aspect-video w-full overflow-hidden bg-white/[0.03] border-b border-white/10">
+             <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy" src={item.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out" />
+             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent opacity-60" />
           </div>
       )}
       <div className="p-5 flex-1 flex flex-col">
           <div className="flex justify-between items-start mb-3">
              <div className="flex items-center gap-2 text-[11px] font-medium tracking-wider text-white/40 uppercase">
-                <FileText className="w-3.5 h-3.5 text-orange-400" /> Blog
+                <FileText className="w-3.5 h-3.5 text-fuchsia-400" /> Blog
                 {item.platform && (
                     <>
                         <span>•</span>
@@ -523,7 +523,7 @@ export function BlogCard({ item, onStar, onDelete, onCopy, onClick }: CardProps)
              
              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                <button
-                className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-white/10 ${item.starred ? "text-amber-400" : "text-white/40 hover:text-white"}`}
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-white/[0.05] ${item.starred ? "text-amber-400" : "text-white/40 hover:text-white"}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onStar();
@@ -532,7 +532,7 @@ export function BlogCard({ item, onStar, onDelete, onCopy, onClick }: CardProps)
                 <Star className="w-3.5 h-3.5" fill={item.starred ? "currentColor" : "none"} />
               </button>
               <button
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.05] transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   onCopy();
@@ -555,12 +555,12 @@ export function BlogCard({ item, onStar, onDelete, onCopy, onClick }: CardProps)
       </div>
     </div>
   );
-}
+});
 
-export function EmailCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+export const EmailCard = React.memo(function EmailCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.02] to-transparent border border-white/[0.05] hover:bg-white/[0.04] hover:border-white/[0.1] hover:shadow-[0_0_40px_rgba(168,85,247,0.05)] transition-all duration-500 cursor-pointer flex flex-col p-5"
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col p-5"
       onClick={onClick}
     >
         <div className="flex justify-between items-start mb-4">
@@ -571,7 +571,7 @@ export function EmailCard({ item, onStar, onDelete, onCopy, onClick }: CardProps
              
              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                <button
-                className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-white/10 ${item.starred ? "text-amber-400" : "text-white/40 hover:text-white"}`}
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-white/[0.05] ${item.starred ? "text-amber-400" : "text-white/40 hover:text-white"}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onStar();
@@ -580,7 +580,7 @@ export function EmailCard({ item, onStar, onDelete, onCopy, onClick }: CardProps
                 <Star className="w-3.5 h-3.5" fill={item.starred ? "currentColor" : "none"} />
               </button>
               <button
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.05] transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   onCopy();
@@ -622,92 +622,126 @@ export function EmailCard({ item, onStar, onDelete, onCopy, onClick }: CardProps
         </div>
 
         {item.description && (
-            <p className="text-sm text-white/50 mt-4 line-clamp-2 leading-relaxed font-light border-t border-white/5 pt-4">
+            <p className="text-sm text-white/50 mt-4 line-clamp-2 leading-relaxed font-light border-t border-white/10 pt-4">
                 {item.description}
             </p>
         )}
     </div>
   );
-}
+});
 
-export function GitCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+export const GitCard = React.memo(function GitCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+  // Extract owner/repo
+  let repoPath = "";
+  try {
+    const u = new URL(item.url);
+    repoPath = u.pathname.split('/').filter(Boolean).slice(0, 2).join('/');
+  } catch (e) {
+    repoPath = item.title || "";
+  }
+
+  const ogImageUrl = `https://opengraph.githubassets.com/1/${repoPath}`;
+
+  const formatNum = (num: number) => {
+    if (!num) return "0";
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  };
+
   return (
     <div
-      className="group relative overflow-hidden rounded-xl bg-[#0d1117] border border-[#30363d] hover:border-[#8b949e] transition-colors cursor-pointer flex flex-col p-4"
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col h-full"
       onClick={onClick}
     >
-        <div className="flex justify-between items-start mb-2">
-             <div className="flex items-center gap-2 text-xs text-[#848d97]">
-                <Github className="w-4 h-4 text-[#848d97]" />
-                {item.author}
-             </div>
-             
-             <div className="flex items-center gap-2">
-               <button
-                className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-[#21262d] ${item.starred ? "text-amber-400" : "text-[#848d97]"}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStar();
-                }}
-              >
-                <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
-              </button>
-              <button
-                className="w-7 h-7 rounded-md flex items-center justify-center text-[#848d97] hover:bg-[#21262d] transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCopy();
-                }}
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-            </div>
+      <div className="flex justify-between items-center p-3 shrink-0">
+         <div className="flex items-center gap-2 text-xs font-medium text-[#848d97]">
+            <Github className="w-4 h-4 text-white" />
+            GitHub Repository
+         </div>
+         
+         <div className="flex items-center gap-2">
+           <button
+            className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-[#21262d] ${item.starred ? "text-pink-500" : "text-[#848d97]"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onStar();
+            }}
+          >
+            <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
+          </button>
+          <button
+            className="w-7 h-7 rounded-md flex items-center justify-center text-[#848d97] hover:bg-[#21262d] transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopy();
+            }}
+          >
+            <Copy className="w-4 h-4" />
+          </button>
         </div>
+      </div>
 
-        <div className="flex items-start gap-3">
-          <div className="flex flex-col flex-1 min-w-0">
-             <h3 className="text-base font-semibold text-[#2f81f7] truncate group-hover:underline">
-                {item.title}
-             </h3>
-          </div>
-        </div>
+      <div className="w-full h-[150px] shrink-0 bg-[#010409] border-y border-[#30363d] relative overflow-hidden flex items-center justify-center">
+         <img loading="lazy" src={ogImageUrl} alt="Repository Banner" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+      </div>
+      
+      <div className="p-4 flex flex-col flex-1 overflow-hidden">
+        <h3 className="text-base font-bold text-white truncate mb-1 group-hover:text-[#2f81f7] transition-colors">
+          {repoPath}
+        </h3>
         
         {item.description && (
-            <p className="text-sm text-[#848d97] line-clamp-3 mt-2">
+            <p className="text-sm text-[#848d97] line-clamp-2 leading-relaxed">
                 {item.description}
             </p>
         )}
 
-        <div className="flex items-center gap-4 mt-auto pt-4 text-xs text-[#848d97]">
+        <div className="flex items-center gap-4 mt-4 text-xs font-medium text-[#848d97]">
            {item.language && (
              <span className="flex items-center gap-1.5">
-               <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.language === 'TypeScript' ? '#3178c6' : item.language === 'JavaScript' ? '#f1e05a' : item.language === 'Python' ? '#3572A5' : item.language === 'Go' ? '#00ADD8' : '#8b5cf6' }}></span>
+               <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.language === 'TypeScript' ? '#3178c6' : item.language === 'JavaScript' ? '#f1e05a' : item.language === 'Python' ? '#3572A5' : item.language === 'Go' ? '#00ADD8' : '#8b5cf6' }}></span>
                <span>{item.language}</span>
              </span>
            )}
            {item.stars !== undefined && (
-             <span className="flex items-center gap-1 hover:text-[#c9d1d9] transition-colors">
-               <Star className="w-4 h-4" />
-               {item.stars.toLocaleString()}
+             <span className="flex items-center gap-1">
+               <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+               {formatNum(item.stars)}
              </span>
            )}
            {item.forks !== undefined && (
-             <span className="flex items-center gap-1 hover:text-[#c9d1d9] transition-colors">
+             <span className="flex items-center gap-1">
                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path fillRule="evenodd" d="M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z"></path></svg>
-               {item.forks.toLocaleString()}
+               {formatNum(item.forks)}
              </span>
            )}
         </div>
+
+        <div className="flex-1"></div>
+
+        <div className="flex items-center justify-between text-xs text-[#848d97] mt-4 mb-4">
+           <span>Updated {item.date || 'recently'}</span>
+           <span className="px-2.5 py-0.5 rounded-full border border-green-500/20 text-green-400 bg-green-500/10 font-medium">Public</span>
+        </div>
+
+        <a 
+          href={item.url} 
+          target="_blank" 
+          rel="noreferrer" 
+          className="w-full py-2 bg-[#21262d] hover:bg-[#30363d] border border-[#363b42] text-white rounded-lg flex items-center justify-center gap-2 text-sm font-semibold transition-all shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          View Repository <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      </div>
     </div>
   );
-}
-
-export { TWCard } from "./TWCard";
-
-export function IGCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+});
+export const IGCard = React.memo(function IGCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   return (
     <div
-      className="group h-[500px] flex flex-col relative overflow-hidden rounded-xl bg-[#1d2226] border border-[#38434f] hover:border-[#4b5563] transition-all cursor-pointer"
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col h-[500px]"
       onClick={onClick}
     >
       {/* Header */}
@@ -723,7 +757,7 @@ export function IGCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
               </span>
             )}
             <span className="text-sm font-semibold text-white max-w-[200px] truncate">
-              {item.title && item.title !== "Instagram Post" ? item.title : (item.heading ? "" : "Instagram Post")}
+              {item.title && item.title !== "Instagram Post" && item.title !== "Instagram Reel" ? item.title : (item.heading ? "" : item.type === "igp" ? "Instagram Post" : "Instagram Reel")}
             </span>
           </div>
         </div>
@@ -745,55 +779,198 @@ export function IGCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
         </div>
       </div>
       
-      <div className="flex-1 relative bg-white flex flex-col overflow-hidden">
+      <div className="flex-1 relative bg-[#1a1a1a] flex flex-col">
+         {/* Transparent overlay to capture clicks and trigger the modal over the iframe */}
+         <div className="absolute inset-0 z-10 cursor-pointer" />
          {item.shortcode ? (
-           <>
-             <LazyIframe
-               src={`https://www.instagram.com/p/${item.shortcode}/embed`}
-               width="100%"
-               height="100%"
-               frameBorder="0"
-               scrolling="no"
-               allowtransparency="true"
-               allow="encrypted-media"
-               className="w-full h-full absolute inset-0 bg-white"
-             />
-             {/* Invisible overlay to capture clicks and prevent iframe from stealing mouse events on dashboard */}
-             <div className="absolute inset-0 z-10 bg-transparent hover:bg-black/5 transition-colors"></div>
-           </>
+            <LazyIframe
+              src={`https://www.instagram.com/p/${item.shortcode}/embed/captioned`}
+              title="Instagram embed"
+              className="w-full h-full absolute inset-0 bg-black/20"
+            />
          ) : (
-             <div className="absolute inset-0 p-4 overflow-y-auto custom-scrollbar flex flex-col bg-[#1d2226]">
-               <div className="flex items-start gap-3 mb-3">
-                   <div className="w-12 h-12 rounded-full bg-[#38434f] flex items-center justify-center shrink-0">
-                      <Instagram className="w-6 h-6 text-[#b2b8bd]" />
-                   </div>
-                   <div className="flex flex-col">
-                       <span className="text-sm font-semibold text-white">
-                          {item.title === "Instagram Post" ? "Instagram Post" : (item.title || "Instagram Post")}
-                       </span>
-                       <span className="text-xs text-[#b2b8bd]">{item.date || "Just now"}</span>
-                   </div>
+            <div className="absolute inset-0 p-4 overflow-y-auto custom-scrollbar flex flex-col">
+               {item.thumbnail && item.thumbnail !== "" ? (
+                 <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy" src={item.thumbnail} alt="Instagram content" className="w-full h-auto rounded-lg mb-4 object-contain max-h-[250px] bg-white/[0.03] border border-white/10" />
+               ) : null}
+               <div className="text-white text-sm whitespace-pre-wrap leading-relaxed">
+                  {item.description && item.description !== "Embedded Instagram Content" && !item.description.includes("Join Threads") ? item.description : "View on Instagram"}
                </div>
-               
-               {item.description && item.description !== "Embedded Instagram Content" && (
-                   <p className="text-sm text-white/90 mb-4 whitespace-pre-wrap leading-relaxed">
-                       {item.description}
-                   </p>
-               )}
-               
-               {item.thumbnail ? (
-                   <div className="rounded-lg overflow-hidden border border-[#38434f] mt-auto">
-                       <img src={item.thumbnail} alt={item.title} className="w-full h-auto max-h-[300px] object-cover" loading="lazy" />
-                   </div>
-               ) : (
-                   <div className="rounded-lg overflow-hidden border border-[#38434f] bg-black/20 flex flex-col items-center justify-center p-6 mt-auto min-h-[200px]">
-                       <Instagram className="w-10 h-10 text-white/20 mb-3" />
-                       <p className="text-sm text-white/40 font-medium text-center">Instagram Post</p>
-                   </div>
-               )}
+               <a href={item.url} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center justify-center bg-white/[0.05] hover:bg-black/20/20 transition-colors text-white text-xs font-semibold px-4 py-2 rounded-full w-max">
+                  Open on Instagram
+               </a>
             </div>
          )}
       </div>
     </div>
   );
-}
+});
+
+export const THCard = React.memo(function THCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+  return (
+    <div
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col h-[500px]"
+      onClick={onClick}
+    >
+      <div className="p-3 border-b border-[#2a2a2a] flex items-center justify-between shrink-0 bg-[#101010]">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-white/[0.03] border border-white/10">
+            <span className="text-white text-xs font-bold leading-none">@</span>
+          </div>
+          <div className="flex flex-col">
+            {item.heading && (
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider truncate max-w-[200px]">
+                {item.heading}
+              </span>
+            )}
+            <span className="text-sm font-semibold text-white max-w-[200px] truncate">
+              {item.title && item.title !== "Threads Post" ? item.title : (item.heading ? "" : "Threads Post")}
+            </span>
+          </div>
+        </div>
+        
+        <div className="flex gap-2 items-center">
+            <button
+                onClick={(e) => { e.stopPropagation(); onStar(); }}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 ${item.starred ? "text-amber-400 bg-amber-400/10" : "text-[#b2b8bd] hover:bg-[#38434f]"}`}
+            >
+                <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
+            </button>
+            <button
+                onClick={(e) => { e.stopPropagation(); onCopy(); }}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors text-[#b2b8bd] hover:bg-[#38434f] shrink-0"
+            >
+                <Copy className="w-4 h-4" />
+            </button>
+        </div>
+      </div>
+      
+      <div className="flex-1 relative bg-[#1a1a1a] flex flex-col">
+         {/* Transparent overlay to capture clicks and trigger the modal over the iframe */}
+         <div className="absolute inset-0 z-10 cursor-pointer" />
+         {item.shortcode ? (
+            <LazyIframe
+              src={`https://www.threads.net/t/${item.shortcode}/embed`}
+              title="Threads embed"
+              className="w-full h-full absolute inset-0 bg-black/20"
+            />
+         ) : (
+            <div className="absolute inset-0 p-4 overflow-y-auto custom-scrollbar flex flex-col">
+               {item.thumbnail && item.thumbnail !== "" ? (
+                 <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy" src={item.thumbnail} alt="Threads content" className="w-full h-auto rounded-lg mb-4 object-contain max-h-[250px] bg-white/[0.03] border border-white/10" />
+               ) : null}
+               <div className="text-white text-sm whitespace-pre-wrap leading-relaxed">
+                  {item.description && item.description !== "Embedded Threads Content" && !item.description.includes("Join Threads") ? item.description : "View on Threads"}
+               </div>
+               <a href={item.url} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center justify-center bg-white/[0.05] hover:bg-black/20/20 transition-colors text-white text-xs font-semibold px-4 py-2 rounded-full w-max">
+                  Open on Threads
+               </a>
+            </div>
+         )}
+      </div>
+    </div>
+  );
+});
+
+
+
+export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+  let domain = "website.com";
+  try {
+    domain = new URL(item.url).hostname.replace('www.', '');
+  } catch(e) {}
+  
+  const favicon = `https://s2.googleusercontent.com/s2/favicons?domain=${domain}&sz=128`;
+  return (
+    <div 
+      key={item.id}
+      onClick={onClick}
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col"
+    >
+      <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onStar();
+          }}
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${item.starred ? "bg-amber-400/20 text-amber-400 border border-amber-400/30" : "bg-black/40 text-white/40 hover:text-white border border-white/10"}`}
+        >
+          <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
+        </button>
+      </div>
+      <div className="p-6 flex gap-4 items-center border-b border-white/5 bg-gradient-to-r from-white/[0.04] to-transparent">
+        <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0 p-2.5">
+          <img loading="lazy" src={favicon} alt={domain} className="w-full h-full object-contain drop-shadow-md" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }} />
+          <Globe2 className="w-6 h-6 text-white/40 hidden" />
+        </div>
+        <div className="flex flex-col pr-8">
+          <h3 className="font-bold text-white text-lg truncate group-hover:text-violet-400 transition-colors">{item.title || domain}</h3>
+          <span className="text-sm text-white/50 truncate flex items-center gap-1"><LinkIcon className="w-3 h-3" /> {domain}</span>
+        </div>
+      </div>
+      <div className="p-6 flex-1 flex flex-col justify-between">
+         <p className="text-sm text-slate-200 line-clamp-3 leading-relaxed mb-4">{item.description || "A saved website from your DevOps journey."}</p>
+         <div className="flex flex-wrap gap-2 mt-auto">
+           {((item as any).tags || []).map((t: string) => (
+              <span key={t} className="px-2.5 py-1 text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg">{t}</span>
+           ))}
+         </div>
+      </div>
+    </div>
+  );
+});
+
+export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+  let domain = "Course Platform";
+  try {
+    domain = new URL(item.url).hostname.replace('www.', '').split('.')[0];
+    domain = domain.charAt(0).toUpperCase() + domain.slice(1);
+  } catch(e) {}
+  
+  return (
+    <div 
+      key={item.id}
+      onClick={onClick}
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col"
+    >
+      <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onStar();
+          }}
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${item.starred ? "bg-amber-400/20 text-amber-400 border border-amber-400/30 shadow-[0_0_15px_rgba(251,191,36,0.2)]" : "bg-black/60 text-white/60 hover:text-white border border-white/20 "}`}
+        >
+          <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
+        </button>
+      </div>
+      <div className="w-full aspect-video bg-gradient-to-br from-violet-900/40 to-[#060816] relative border-b border-white/10 flex items-center justify-center overflow-hidden">
+         {item.thumbnail ? (
+            <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy" src={item.thumbnail} className="w-full h-full object-cover opacity-80 group-hover:scale-105 group-hover:opacity-100 transition-all duration-500" />
+         ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+               <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center rotate-12 group-hover:rotate-0 transition-transform duration-500">
+                  <PlayCircle className="w-8 h-8 text-fuchsia-400" />
+               </div>
+            </div>
+         )}
+         <div className="absolute top-3 left-3 px-2.5 py-1 bg-black/60  rounded-lg border border-white/10 text-xs font-bold text-white flex items-center gap-1.5 shadow-lg shadow-black/50">
+           <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> {(item as any).difficulty || "Hands-on"}
+         </div>
+      </div>
+      <div className="p-5 flex-1 flex flex-col">
+         <h3 className="font-bold text-white text-base leading-snug line-clamp-2 mb-2 group-hover:text-fuchsia-400 transition-colors">{item.title || "Interactive Lab Course"}</h3>
+         <p className="text-sm text-white/50 mb-4 line-clamp-1 flex items-center gap-1.5">
+           {domain} <span className="text-white/20">•</span> {item.author || "Instructor"}
+         </p>
+         
+         <div className="flex items-center justify-between text-xs font-semibold text-white/50 mt-auto pt-4 border-t border-white/10">
+            <span className="flex items-center gap-1.5 text-emerald-400"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> {(item as any).duration || "Self-paced"}</span>
+            <span className="flex items-center gap-1.5 text-violet-400 bg-violet-500/10 px-2 py-1 rounded-md border border-violet-500/20"><Copy className="w-3 h-3" /> Lab Environment</span>
+         </div>
+      </div>
+    </div>
+  );
+});
+
+export { TWCard } from './TWCard';

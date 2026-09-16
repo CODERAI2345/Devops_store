@@ -73,6 +73,10 @@ export function useCentralHub() {
     tw: [],
     git: [],
     ig: [],
+    igp: [],
+    th: [],
+    web: [],
+    lab: [],
   });
   const [currentTab, setCurrentTab] = useState<ItemType>("yt");
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,11 +98,16 @@ export function useCentralHub() {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const newDb: HubDB = { yt: [], ys: [], ypl: [], li: [], lp: [], blog: [], email: [], tw: [], git: [], ig: [] };
+        const newDb: HubDB = { yt: [], ys: [], ypl: [], li: [], lp: [], blog: [], email: [], tw: [], git: [], ig: [], igp: [], th: [], web: [], lab: [] };
         snap.docs.forEach((docSnap) => {
           const data = docSnap.data() as HubItem;
           if (data.type === "yt" && (data as any).pid) {
             (data as any).type = "ypl";
+          }
+          if (data.type === "ig" && data.url && data.url.includes("/p/")) {
+            (data as any).type = "igp";
+            // Fire-and-forget migration in background
+            updateDoc(doc(db, `public_items`, String(data.id)), { type: "igp" }).catch(e => console.error("Migration error", e));
           }
           if (newDb[data.type]) {
             (newDb[data.type] as any[]).push(data);

@@ -12,7 +12,8 @@ html {
 
 body {
   margin: 0;
-  background-color: #080b1d;
+  background: linear-gradient(135deg, #09090b 0%, #0f1025 50%, #200d29 100%);
+  background-attachment: fixed;
   color: #ffffff;
   font-family: Inter, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -39,10 +40,21 @@ body {
     background: transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(217, 70, 239, 0.15);
     border-radius: 10px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(217, 70, 239, 0.3);
   }
+}
+
+@keyframes electric-pulse {
+  0% { box-shadow: 0 0 10px #d946ef, inset 0 0 10px #d946ef; opacity: 0.8; }
+  50% { box-shadow: 0 0 25px #d946ef, inset 0 0 20px #d946ef; opacity: 1; }
+  100% { box-shadow: 0 0 10px #d946ef, inset 0 0 10px #d946ef; opacity: 0.8; }
+}
+
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
