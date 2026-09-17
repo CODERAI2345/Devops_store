@@ -8,9 +8,10 @@ declare global {
   }
 }
 import React, { useState, useEffect } from "react";
-import { X, Clock, Link as LinkIcon, Edit2, Save, Upload } from "lucide-react";
+import { X, Clock, Link as LinkIcon, Edit2, Save, Upload, Terminal, Globe2 } from "lucide-react";
 import { HubItem } from "../types";
 import { shortenUrl, ytId, ytPlaylistId } from "../utils";
+import { ThreadsMediaCarousel, extractThreadsMedia } from "./ThreadsMediaCarousel";
 
 interface ModalProps {
   item: HubItem | null;
@@ -86,6 +87,22 @@ export function Modal({
       }
     }
 
+    if (item.type === "th") {
+      let imgList: string[] = [];
+      if (typeof updates.images === "string") {
+        imgList = updates.images.split("\n").map((s: string) => s.trim()).filter(Boolean);
+      } else if (Array.isArray(updates.images)) {
+        imgList = updates.images.map((s: string) => typeof s === "string" ? s.trim() : "").filter(Boolean);
+      }
+      if (imgList.length > 0) {
+        updates.images = imgList;
+        updates.media = imgList.map((u: string) => ({ url: u, type: "image" as const, alt: updates.title || "Threads photo" }));
+        if (!updates.thumbnail || !imgList.includes(updates.thumbnail)) {
+          updates.thumbnail = imgList[0];
+        }
+      }
+    }
+
     onUpdate(item.id, updates);
     setIsEditing(false);
   };
@@ -137,6 +154,8 @@ export function Modal({
     tw: "Open X / Twitter Post",
     ig: "Open on Instagram",
     git: "View on GitHub",
+    lab: "Launch Lab Environment",
+    web: "Visit Website",
   }[item.type] || "Open Link";
 
   const handlePrimaryClick = async () => {
@@ -213,17 +232,30 @@ export function Modal({
                 allowFullScreen
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               ></iframe>
-            ) : item.type === "th" && item.shortcode ? (
-              <div className="w-full min-h-[400px] max-h-[600px] flex justify-center bg-black/20 overflow-hidden relative rounded-xl">
-                 <iframe
-                   src={`https://www.threads.net/t/${item.shortcode}/embed`}
-                   width="100%"
-                   height="100%"
-                   frameBorder="0"
-                   scrolling="yes"
-                   allow="encrypted-media"
-                   className="w-full h-full absolute inset-0 bg-black/20"
-                 ></iframe>
+            ) : item.type === "th" ? (
+              <div className="w-full h-[420px] sm:h-[460px] flex justify-center bg-black overflow-hidden relative">
+                {extractThreadsMedia(item).length > 0 ? (
+                  <ThreadsMediaCarousel
+                    item={item}
+                    variant="modal"
+                    autoPlayVideo={false}
+                    className="w-full h-full"
+                  />
+                ) : item.shortcode ? (
+                  <iframe
+                    src={`https://www.threads.net/t/${item.shortcode}/embed`}
+                    width="100%"
+                    height="100%"
+                    frameBorder="0"
+                    scrolling="yes"
+                    allow="encrypted-media"
+                    className="w-full h-full absolute inset-0 bg-black/20"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center text-white/40 text-sm">
+                    No media available
+                  </div>
+                )}
               </div>
             ) : item.type === "ig" && item.shortcode ? (
               <div className="w-full min-h-[400px] max-h-[600px] flex justify-center bg-[#010409] overflow-hidden relative">
@@ -237,12 +269,28 @@ export function Modal({
                    className="w-full h-full absolute inset-0 bg-black/20"
                  ></iframe>
               </div>
-            ) : thumb ? (
+             ) : thumb ? (
               <img
                 src={thumb}
                 alt=""
                 className={`w-full ${item.type === "ys" ? "max-w-[300px] aspect-[9/16] mx-auto object-cover my-6 rounded-xl shadow-2xl" : item.type === "li" || item.type === "lp" ? "max-h-[350px] object-contain" : "max-h-[400px] object-cover"}`}
               />
+            ) : item.type === "lab" ? (
+              <div className="w-full py-12 flex flex-col items-center justify-center bg-gradient-to-br from-amber-950/40 via-[#0d0f17] to-black border-b border-white/10 p-6 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-3 shadow-[0_0_25px_rgba(245,158,11,0.15)]">
+                  <Terminal className="w-8 h-8 text-amber-400" />
+                </div>
+                <span className="text-sm font-semibold text-amber-400 uppercase tracking-wider">{(item as any).platform || "Hands-on Lab"}</span>
+                <span className="text-xs text-white/50 mt-1">Interactive DevOps & Cloud Challenge</span>
+              </div>
+            ) : item.type === "web" ? (
+              <div className="w-full py-10 flex flex-col items-center justify-center bg-gradient-to-br from-blue-950/40 via-[#0d0f17] to-black border-b border-white/10 p-6 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-3 shadow-[0_0_25px_rgba(59,130,246,0.15)]">
+                  <Globe2 className="w-8 h-8 text-blue-400" />
+                </div>
+                <span className="text-sm font-semibold text-blue-400 uppercase tracking-wider">{(item as any).platform || (item as any).domain || "Web Resource"}</span>
+                <span className="text-xs text-white/50 mt-1">Curated Documentation & DevOps Tools</span>
+              </div>
             ) : null}
           </div>
 
@@ -306,6 +354,26 @@ export function Modal({
                     </label>
                   </div>
                 </div>
+
+                {item.type === "th" && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider pl-1 flex items-center justify-between">
+                      <span>Carousel Photos (One image URL per line)</span>
+                      {Array.isArray(editData.images) && editData.images.length > 0 && (
+                        <span className="text-violet-400 font-mono text-[10px] lowercase">
+                          {editData.images.length} photos
+                        </span>
+                      )}
+                    </label>
+                    <textarea
+                      rows={3}
+                      className="w-full text-xs font-mono text-white/80 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.05] transition-all placeholder-white/20"
+                      value={Array.isArray(editData.images) ? editData.images.join("\n") : (editData.images || "")}
+                      onChange={(e) => setEditData({ ...editData, images: e.target.value })}
+                      placeholder="https://... photo 1&#10;https://... photo 2"
+                    />
+                  </div>
+                )}
 
                 {item.type === "blog" && (
                   <div className="flex flex-col gap-1.5">
@@ -389,6 +457,51 @@ export function Modal({
                         placeholder="Email"
                       />
                     </div>
+                  )}
+
+                  {(item.type === "lab" || item.type === "web") && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider pl-1">
+                        Platform / Source
+                      </label>
+                      <input
+                        className="w-full text-sm font-medium text-white/90 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500/50 focus:bg-white/[0.05] transition-all placeholder-white/20"
+                        value={editData.platform || ""}
+                        onChange={(e) => setEditData({ ...editData, platform: e.target.value })}
+                        placeholder="Platform (e.g. KodeKloud, AWS, Kubernetes)"
+                      />
+                    </div>
+                  )}
+
+                  {item.type === "lab" && (
+                    <>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider pl-1">
+                          Difficulty Level
+                        </label>
+                        <select
+                          className="w-full text-sm font-medium text-white/90 bg-[#09090b] border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500/50 transition-all cursor-pointer"
+                          value={editData.difficulty || "Hands-on"}
+                          onChange={(e) => setEditData({ ...editData, difficulty: e.target.value })}
+                        >
+                          <option value="Hands-on">Hands-on</option>
+                          <option value="Beginner">Beginner</option>
+                          <option value="Intermediate">Intermediate</option>
+                          <option value="Advanced">Advanced</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider pl-1">
+                          Duration
+                        </label>
+                        <input
+                          className="w-full text-sm font-medium text-white/90 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500/50 focus:bg-white/[0.05] transition-all placeholder-white/20"
+                          value={editData.duration || ""}
+                          onChange={(e) => setEditData({ ...editData, duration: e.target.value })}
+                          placeholder="e.g. 45 Mins, 1-2 Hours, Self-paced"
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -522,6 +635,36 @@ export function Modal({
                     <div className="text-xs font-semibold text-white/60 flex items-center gap-1.5 bg-white/[0.03] px-3 py-1.5 rounded-lg border border-white/10">
                       {(item as any).platform}
                     </div>
+                  )}
+                  {item.type === "lab" && (item as any).platform && (
+                    <div className="text-xs font-semibold text-amber-400 flex items-center gap-1.5 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20">
+                      <Terminal className="w-3.5 h-3.5" />
+                      {(item as any).platform}
+                    </div>
+                  )}
+                  {item.type === "lab" && (item as any).difficulty && (
+                    <div className="text-xs font-semibold text-cyan-400 flex items-center gap-1.5 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20">
+                      {(item as any).difficulty}
+                    </div>
+                  )}
+                  {item.type === "lab" && (item as any).duration && (
+                    <div className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+                      <Clock className="w-3.5 h-3.5" />
+                      {(item as any).duration}
+                    </div>
+                  )}
+                  {item.type === "web" && ((item as any).platform || (item as any).domain) && (
+                    <div className="text-xs font-semibold text-blue-400 flex items-center gap-1.5 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20">
+                      <Globe2 className="w-3.5 h-3.5" />
+                      {(item as any).platform || (item as any).domain}
+                    </div>
+                  )}
+                  {(item.type === "lab" || item.type === "web") && Array.isArray((item as any).tags) && (item as any).tags.length > 0 && (
+                    (item as any).tags.map((t: string) => (
+                      <div key={t} className="text-xs font-medium text-zinc-300 flex items-center gap-1 bg-white/[0.04] px-2.5 py-1.5 rounded-lg border border-white/10">
+                        #{t}
+                      </div>
+                    ))
                   )}
                   {item.url && item.type !== "li" && (
                     <div 

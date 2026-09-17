@@ -91,12 +91,25 @@ export interface IGPItem extends BaseItem {
   tags?: string[];
 }
 
+export interface ThreadsMediaItemType {
+  url: string;
+  type: "image" | "video";
+  thumbnail?: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface THItem extends BaseItem {
   type: "th";
   handle?: string;
   heading?: string;
   tags?: string[];
   shortcode?: string;
+  media?: (ThreadsMediaItemType | string)[];
+  images?: string[];
+  videos?: string[];
+  videoUrl?: string;
 }
 
 

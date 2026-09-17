@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { HubDB, ItemType, HubItem } from "../types";
 import { db, auth } from "../firebase";
+import { SEED_THREADS_ITEMS } from "../data/seedThreads";
+import { isThreadsUrl } from "../utils";
 import {
   collection,
   onSnapshot,
@@ -74,7 +76,7 @@ export function useCentralHub() {
     git: [],
     ig: [],
     igp: [],
-    th: [],
+    th: [...SEED_THREADS_ITEMS],
     web: [],
     lab: [],
   });
@@ -107,12 +109,20 @@ export function useCentralHub() {
           if (data.type === "ig" && data.url && data.url.includes("/p/")) {
             (data as any).type = "igp";
             // Fire-and-forget migration in background
-            updateDoc(doc(db, `public_items`, String(data.id)), { type: "igp" }).catch(e => console.error("Migration error", e));
+            updateDoc(doc(db, `public_items`, String(data.id || docSnap.id)), { type: "igp" }).catch(e => console.error("Migration error", e));
+          }
+          if ((data.type === "web" || !data.type) && data.url && isThreadsUrl(data.url)) {
+            (data as any).type = "th";
+            // Re-classify and update Firestore
+            updateDoc(doc(db, `public_items`, String(data.id || docSnap.id)), { type: "th" }).catch(e => console.error("Threads migration error", e));
           }
           if (newDb[data.type]) {
             (newDb[data.type] as any[]).push(data);
           }
         });
+        if (newDb.th.length === 0) {
+          newDb.th = [...SEED_THREADS_ITEMS];
+        }
         setHubDb(newDb);
         setIsInitialLoading(false);
       },

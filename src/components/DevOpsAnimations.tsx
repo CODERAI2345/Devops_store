@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useInView } from 'motion/react';
 import { Server, CheckCircle2, Loader2, Container, Terminal as TerminalIcon, ShieldAlert, Cpu, Check, Activity, Rocket, Beaker, FileCode, Globe, Network } from 'lucide-react';
+import { AlbIcon, Ec2Icon } from './AwsIcons';
 
 // =====================================================================
 // 1) KUBERNETES POD SCALING ANIMATION
@@ -395,7 +396,8 @@ export const CloudTraffic = () => {
         </div>
 
         {/* Load Balancer */}
-        <div className="z-10 mt-6 flex h-10 w-28 items-center justify-center gap-2 rounded-lg border border-blue-500/30 bg-[#0d152a] shadow-[0_0_20px_rgba(59,130,246,0.15)]">
+        <div className="z-10 mt-6 flex h-10 w-32 items-center justify-center gap-2 rounded-lg border border-blue-500/30 bg-[#0d152a] shadow-[0_0_20px_rgba(59,130,246,0.15)] px-2">
+          <AlbIcon className="w-5 h-5 text-cyan-400 shrink-0" />
           <span className="text-xs font-bold text-blue-200">ALB</span>
         </div>
 
@@ -414,7 +416,7 @@ export const CloudTraffic = () => {
                 transition={{ duration: 0.3 }}
                 className="flex h-14 w-20 flex-col items-center justify-center rounded-xl border border-white/10 bg-[#12182b]"
               >
-                <Server size={18} className={isActive ? 'text-green-400' : 'text-slate-500'} />
+                <Ec2Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-green-400' : 'text-slate-500'}`} />
                 <span className={`mt-1 text-[10px] font-bold ${isActive ? 'text-green-400' : 'text-slate-500'}`}>
                   EC2-{i + 1}
                 </span>

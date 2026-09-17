@@ -63,7 +63,12 @@ service cloud.firestore {
              isValidOptionalString('date', 1000) &&
              isValidOptionalString('platform', 2000) &&
              isValidOptionalString('handle', 2000) &&
-             isValidOptionalString('heading', 2000);
+             isValidOptionalString('heading', 2000) &&
+             isValidOptionalString('shortcode', 2000) &&
+             isValidOptionalString('videoUrl', 10000) &&
+             (!( 'images' in data ) || data.images is list) &&
+             (!( 'videos' in data ) || data.videos is list) &&
+             (!( 'media' in data ) || data.media is list);
     }
 
     match /public_items/{itemId} {

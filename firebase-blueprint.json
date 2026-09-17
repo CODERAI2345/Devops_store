@@ -6,7 +6,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "number" },
-        "type": { "type": "string", "enum": ["yt", "ys", "li", "lp", "job"] },
+        "type": { "type": "string", "enum": ["yt", "ys", "li", "lp", "job", "blog", "email", "tw", "git", "ig", "igp", "th", "lab", "web"] },
         "url": { "type": "string" },
         "title": { "type": "string" },
         "author": { "type": "string" },
@@ -19,7 +19,11 @@
         "thumbnail": { "type": "string" },
         "vid": { "type": "string" },
         "date": { "type": "string" },
-        "ts": { "type": "number" }
+        "ts": { "type": "number" },
+        "shortcode": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "media": { "type": "array" }
       },
       "required": ["id", "type", "url", "title", "ts"]
     }

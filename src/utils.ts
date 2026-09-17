@@ -34,12 +34,32 @@ export function parseSlug(url: string, type: "li" | "lp") {
   return "";
 }
 
+export function isThreadsUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const raw = url.trim().toLowerCase();
+    if (
+      raw.includes("threads.net") ||
+      raw.includes("threads.com") ||
+      raw.includes("threads.page")
+    ) {
+      return true;
+    }
+    const parsed = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    if (parsed.hostname.includes("threads")) return true;
+  } catch (e) {
+    const l = url.toLowerCase();
+    if (l.includes("threads.net") || l.includes("threads.com")) return true;
+  }
+  return false;
+}
+
 export function classifyUrl(u: string): "yt" | "ys" | "ypl" | "li" | "lp" | "tw" | "git" | "blog" | "email" | "ig" | "igp" | "th" | "web" | "lab" | null {
+  if (isThreadsUrl(u)) return "th";
   if (u.toLowerCase().includes("instagram.com") || u.toLowerCase().includes("instagr.am")) {
     if (u.toLowerCase().includes("/p/")) return "igp";
     return "ig";
   }
-  if (u.toLowerCase().includes("threads.net")) return "th";
   const l = u.toLowerCase();
   if (l.includes("github.com") && l.split("/").length >= 4) return "git";
   if (l.includes("youtube.com/playlist")) return "ypl";
@@ -63,9 +83,47 @@ export function classifyUrl(u: string): "yt" | "ys" | "ypl" | "li" | "lp" | "tw"
   )
     return "blog";
   if (l.startsWith("mailto:")) return "email";
-  if (l.includes("udemy.com") || l.includes("coursera.org") || l.includes("pluralsight.com") || l.includes("kodekloud.com") || l.includes("kode.wiki") || l.includes("acloudguru.com")) return "lab";
+  if (
+    l.includes("udemy.com") ||
+    l.includes("coursera.org") ||
+    l.includes("pluralsight.com") ||
+    l.includes("kodekloud.com") ||
+    l.includes("kode.wiki") ||
+    l.includes("killercoda.com") ||
+    l.includes("killer.sh") ||
+    l.includes("sadservers.com") ||
+    l.includes("tryhackme.com") ||
+    l.includes("hackthebox.com") ||
+    l.includes("acloudguru.com") ||
+    l.includes("instruqt.com") ||
+    l.includes("workshops.aws") ||
+    l.includes("skillbuilder.aws") ||
+    l.includes("wellarchitectedlabs.com") ||
+    l.includes("cloudskillsboost.google") ||
+    l.includes("qwiklabs.com") ||
+    l.includes("play-with-docker.com") ||
+    l.includes("play-with-k8s.com") ||
+    l.includes("/courses/") ||
+    l.includes("/labs/") ||
+    l.includes("/handson/")
+  )
+    return "lab";
   if (u.startsWith("http")) return "web";
   return null;
+}
+
+export function getLabDifficultyBadge(difficulty?: string) {
+  const d = (difficulty || "Hands-on").toLowerCase();
+  if (d.includes("beginner") || d.includes("intro") || d.includes("easy")) {
+    return { label: "Beginner", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
+  }
+  if (d.includes("intermediate") || d.includes("medium")) {
+    return { label: "Intermediate", color: "text-amber-400 bg-amber-500/10 border-amber-500/20" };
+  }
+  if (d.includes("advanced") || d.includes("expert") || d.includes("hard")) {
+    return { label: "Advanced", color: "text-rose-400 bg-rose-500/10 border-rose-500/20" };
+  }
+  return { label: "Hands-on", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20" };
 }
 
 export function extractTwitterUsername(url: string) {
@@ -216,11 +274,22 @@ export function extractInstagramShortcode(url: string) {
 
 export function extractThreadsShortcode(url: string) {
   try {
-    const u = new URL(url);
-    if (!u.hostname.includes('threads.net')) return null;
-    const m = u.pathname.match(/\/(?:t|post)\/([^\/?#]+)/i);
+    const raw = url.trim();
+    const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    if (!u.hostname.includes('threads.net') && !u.hostname.includes('threads.com') && !u.hostname.includes('threads')) {
+      return null;
+    }
+    const m = u.pathname.match(/\/(?:t|post|share)\/([^\/?#]+)/i);
     return m ? m[1] : null;
   } catch (e) {
     return null;
   }
+}
+
+export function extractThreadsAuthor(url: string): string {
+  try {
+    const m = url.match(/@([a-zA-Z0-9_.-]+)/);
+    if (m && m[1]) return `@${m[1]}`;
+  } catch (e) {}
+  return "";
 }

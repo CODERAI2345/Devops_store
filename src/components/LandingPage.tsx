@@ -4,6 +4,14 @@ import { motion } from "motion/react";
 import { LogoIcon } from './LogoIcon';
 import { K8sPods, Terminal, Pipeline, CloudTraffic } from './DevOpsAnimations';
 import {
+  AwsLogo,
+  KubernetesSvg,
+  DockerSvg,
+  TerraformSvg,
+  GithubActionsSvg,
+  LinuxSvg
+} from './AwsIcons';
+import {
   Armchair,
   ArrowRight,
   BookOpen,
@@ -32,56 +40,56 @@ import {
   FileText
 } from "lucide-react";
 
-const domains = [
+const domains: { name: string; icon: React.ReactNode; color: string }[] = [
+  {
+    name: "AWS Cloud",
+    icon: <AwsLogo className="w-7 h-5" />,
+    color: "from-orange-500/20 to-amber-500/10",
+  },
   {
     name: "Kubernetes",
-    icon: "☸",
+    icon: <KubernetesSvg className="w-7 h-7" />,
     color: "from-blue-600/30 to-cyan-500/10",
   },
   {
-    name: "Terraform",
-    icon: "◆",
-    color: "from-purple-600/30 to-violet-500/10",
-  },
-  {
-    name: "AWS",
-    icon: "aws",
-    color: "from-violet-500/30 to-yellow-500/10",
-  },
-  {
-    name: "CI/CD",
-    icon: "∞",
-    color: "from-emerald-500/30 to-teal-500/10",
-  },
-  {
     name: "Docker",
-    icon: "🐳",
+    icon: <DockerSvg className="w-7 h-7" />,
     color: "from-sky-500/30 to-blue-500/10",
   },
   {
+    name: "Terraform",
+    icon: <TerraformSvg className="w-7 h-7" />,
+    color: "from-purple-600/30 to-violet-500/10",
+  },
+  {
     name: "GitHub Actions",
-    icon: "◉",
+    icon: <GithubActionsSvg className="w-7 h-7" />,
     color: "from-indigo-500/30 to-purple-500/10",
   },
   {
+    name: "Linux Systems",
+    icon: <LinuxSvg className="w-7 h-7" />,
+    color: "from-yellow-500/30 to-orange-500/10",
+  },
+  {
+    name: "CI/CD Pipelines",
+    icon: <span className="text-emerald-400 font-black text-xl">∞</span>,
+    color: "from-emerald-500/30 to-teal-500/10",
+  },
+  {
     name: "Monitoring",
-    icon: "▥",
+    icon: <span className="text-pink-400 font-bold text-lg">▥</span>,
     color: "from-pink-500/30 to-rose-500/10",
   },
   {
-    name: "SRE",
-    icon: "⬡",
+    name: "SRE & Reliability",
+    icon: <span className="text-violet-400 font-bold text-lg">⬡</span>,
     color: "from-violet-500/30 to-red-500/10",
   },
   {
-    name: "Cloud",
-    icon: "☁",
-    color: "from-blue-500/30 to-indigo-500/10",
-  },
-  {
-    name: "Linux",
-    icon: "🐧",
-    color: "from-yellow-500/30 to-orange-500/10",
+    name: "Cloud Security",
+    icon: <Shield className="w-6 h-6 text-cyan-400" />,
+    color: "from-cyan-500/30 to-blue-500/10",
   },
 ];
 
@@ -186,20 +194,21 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
             </div>
           </a>
 
-          <div className="hidden items-center gap-8 text-sm text-slate-100 md:flex">
-            <a href="#domains" className="hover:text-fuchsia-400">
+          <div className="hidden items-center gap-7 text-sm text-slate-100 md:flex">
+            <a href="#domains" className="hover:text-fuchsia-400 transition-colors">
               Explore
             </a>
-            <a href="#resources" className="hover:text-fuchsia-400">
+            <a href="#architecture" className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-300 hover:bg-orange-500/20 hover:text-orange-200 transition">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-ping" />
+              AWS Architecture
+            </a>
+            <a href="#resources" className="hover:text-fuchsia-400 transition-colors">
               Resources
             </a>
-            <a href="#learn" className="hover:text-fuchsia-400">
+            <a href="#learn" className="hover:text-fuchsia-400 transition-colors">
               Learn & Grow
             </a>
-            <a href="#domains" className="hover:text-fuchsia-400">
-              DevOps Domains
-            </a>
-            <a href="#about" className="hover:text-fuchsia-400">
+            <a href="#about" className="hover:text-fuchsia-400 transition-colors">
               About
             </a>
           </div>
@@ -234,9 +243,12 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
           <div className="border-t border-white/10 bg-[#0d1128] px-6 py-6 md:hidden">
             <div className="flex flex-col gap-5 text-slate-100">
               <a href="#domains" onClick={() => setMobileMenu(false)}>Explore</a>
+              <a href="#architecture" onClick={() => setMobileMenu(false)} className="text-orange-300 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-orange-400" />
+                AWS Architecture (Live SVG)
+              </a>
               <a href="#resources" onClick={() => setMobileMenu(false)}>Resources</a>
               <a href="#learn" onClick={() => setMobileMenu(false)}>Learn & Grow</a>
-              <a href="#domains" onClick={() => setMobileMenu(false)}>DevOps Domains</a>
               <a href="#about" onClick={() => setMobileMenu(false)}>About</a>
               <button
                 onClick={() => setView('feed')}
@@ -277,7 +289,21 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
               </p>
             </StaggerItem>
 
-            
+            <StaggerItem className="mt-8 flex flex-wrap items-center gap-4">
+              <button
+                onClick={() => setView('feed')}
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-fuchsia-500/25 transition hover:from-violet-500 hover:to-fuchsia-500"
+              >
+                Explore Hub <ArrowRight size={16} />
+              </button>
+              <a
+                href="#architecture"
+                className="flex items-center gap-2.5 rounded-xl border border-orange-500/40 bg-orange-500/10 px-5 py-3.5 text-sm font-semibold text-orange-200 hover:bg-orange-500/20 hover:border-orange-500/60 transition shadow-lg shadow-orange-500/10"
+              >
+                <AwsLogo className="w-6 h-4 shrink-0" />
+                <span>View AWS Architecture</span>
+              </a>
+            </StaggerItem>
 
             <StaggerItem>
               <div className="mt-10 flex flex-wrap gap-5 text-sm text-slate-100">
@@ -367,23 +393,26 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
       </section>
 
 
-      {/* ================= PIPELINE ANIMATION ================= */}
-      <section className="border-t border-white/10 bg-[#0a060f] py-24 overflow-hidden">
+      {/* ================= AWS CLOUD TOPOLOGY & ARCHITECTURE ================= */}
+      <section id="architecture" className="border-t border-white/10 bg-[#0a060f] py-24 overflow-hidden scroll-mt-16">
         <FadeIn>
         <div className="mx-auto max-w-7xl px-6 flex flex-col gap-12">
           <div className="text-center relative z-10">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              AWS <span className="text-fuchsia-400">Cloud Architecture</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold uppercase tracking-wider mb-4">
+              <AwsLogo className="w-5 h-3.5" /> High-Availability Infrastructure
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">
+              Production <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400">AWS Architecture</span>
             </h2>
             <p className="text-lg text-slate-200 max-w-2xl mx-auto leading-relaxed">
-              Watch real-time traffic flow through a robust, highly-available AWS architecture. From edge networking to private compute and managed databases.
+              Explore the live architecture with official AWS service iconography. Trace packets from Route 53 and AWS WAF through the Application Load Balancer into private Multi-AZ EC2 compute, ElastiCache, RDS, and S3.
             </p>
           </div>
           <div className="w-full flex justify-center mt-4">
             <PipelineAnimation />
           </div>
         </div>
-              </FadeIn>
+        </FadeIn>
       </section>
 
       {/* ================= EXPLORE CATALOGS ================= */}

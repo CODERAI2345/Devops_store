@@ -1,44 +1,139 @@
-import React, { useState } from "react";
-import { Star, Copy, X, ExternalLink, Image as ImageIcon } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Star, Copy, X, ExternalLink, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 
 export function InstagramModal({
   item,
   onClose,
   onStar,
   onCopy,
+  onPrev,
+  onNext,
+  currentIndex,
+  totalCount,
 }: {
   item: any;
   onClose: () => void;
   onStar: () => void;
   onCopy: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  currentIndex?: number;
+  totalCount?: number;
 }) {
   const [iframeFailed, setIframeFailed] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+
+  // Keyboard navigation for sliding between posts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft" && onPrev) {
+        onPrev();
+      } else if (e.key === "ArrowRight" && onNext) {
+        onNext();
+      } else if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onPrev, onNext, onClose]);
+
+  // Touch swipe support for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX;
+    if (diff > 60 && onNext) {
+      onNext(); // Swiped left -> next
+    } else if (diff < -60 && onPrev) {
+      onPrev(); // Swiped right -> prev
+    }
+    touchStartX.current = null;
+  };
 
   if (!item) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
+    <div 
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-md animate-in fade-in duration-300"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
         onClick={onClose}
       />
+
+      {/* Floating Desktop Prev/Next Buttons */}
+      {onPrev && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onPrev(); }}
+          className="hidden sm:flex absolute left-4 lg:left-8 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 items-center justify-center text-white backdrop-blur-md transition-all shadow-xl hover:scale-110 active:scale-95"
+          title="Previous Instagram Post (Left Arrow)"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+      )}
+
+      {onNext && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          className="hidden sm:flex absolute right-4 lg:right-8 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 items-center justify-center text-white backdrop-blur-md transition-all shadow-xl hover:scale-110 active:scale-95"
+          title="Next Instagram Post (Right Arrow)"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </button>
+      )}
       
       <div 
-        className="relative w-full max-w-[420px] max-h-[90vh] bg-[#060816] border border-white/10 rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 z-10 overflow-hidden"
+        className="relative w-full max-w-[440px] max-h-[90vh] bg-[#060816] border border-white/10 rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 z-10 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0 bg-white/[0.02] backdrop-blur-md z-20">
-          <div className="flex items-center gap-2">
-             <div className="w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center border border-pink-500/30">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 shrink-0 bg-white/[0.03] backdrop-blur-md z-20">
+          <div className="flex items-center gap-2.5">
+             <div className="w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center border border-pink-500/30 shrink-0">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-pink-500"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>
              </div>
              <div className="flex flex-col">
-               <span className="text-sm font-semibold text-white drop-shadow-md">Instagram</span>
+               <div className="flex items-center gap-2">
+                 <span className="text-sm font-semibold text-white drop-shadow-md">Instagram</span>
+                 {currentIndex && totalCount ? (
+                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300 font-mono">
+                     {currentIndex} / {totalCount}
+                   </span>
+                 ) : null}
+               </div>
+               {item.heading && (
+                 <span className="text-[11px] text-emerald-400 font-medium truncate max-w-[170px]">{item.heading}</span>
+               )}
              </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* Mobile Prev / Next Buttons */}
+            {onPrev && (
+              <button
+                className="sm:hidden w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-white/5 border border-white/10"
+                onClick={onPrev}
+                title="Previous Post"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
+            {onNext && (
+              <button
+                className="sm:hidden w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-white/5 border border-white/10"
+                onClick={onNext}
+                title="Next Post"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
             <button
               className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors border ${item.starred ? "text-amber-400 bg-amber-400/20 border-amber-400/30 shadow-[0_0_10px_rgba(251,191,36,0.3)]" : "text-white/70 hover:text-white hover:bg-black/20/20 border-transparent bg-black/30"}`}
               onClick={onStar}
@@ -53,7 +148,7 @@ export function InstagramModal({
             >
               <Copy className="w-4 h-4" />
             </button>
-            <div className="w-px h-5 bg-black/20/20 mx-1"></div>
+            <div className="w-px h-5 bg-white/10 mx-0.5"></div>
             <button
               className="w-8 h-8 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-black/20/20 transition-colors bg-black/30"
               onClick={onClose}
@@ -68,6 +163,7 @@ export function InstagramModal({
         <div className="w-full flex-1 flex justify-center bg-black/20 rounded-b-2xl overflow-hidden shadow-[inset_0_20px_60px_rgba(0,0,0,0.5)] overflow-y-auto custom-scrollbar">
           {!iframeFailed && item.shortcode ? (
             <iframe
+              key={item.shortcode}
               src={`https://www.instagram.com/p/${item.shortcode}/embed/captioned`}
               className="w-full min-h-[800px] h-[800px] border-0"
               allow="encrypted-media"
@@ -89,7 +185,7 @@ export function InstagramModal({
                 </div>
                 {item.description && (
                   <div className="p-5 flex flex-col gap-3 shrink-0 bg-[#121212]">
-                    <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">
+                    <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
                       {item.description}
                     </p>
                   </div>
@@ -99,14 +195,17 @@ export function InstagramModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-5 border-t border-white/10 bg-white/[0.02] backdrop-blur-md flex flex-wrap sm:flex-nowrap items-center gap-3 shrink-0 z-20">
+        <div className="px-5 py-4 border-t border-white/10 bg-white/[0.02] backdrop-blur-md flex items-center justify-between gap-3 shrink-0 z-20">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>Swipe or use <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-slate-200">←</kbd> <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-slate-200">→</kbd> to slide</span>
+          </div>
           <a
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-sm font-bold flex items-center justify-center gap-2 hover:from-violet-500 hover:to-fuchsia-500 transition-all duration-300 hover:scale-[1.02] shadow-lg shadow-fuchsia-500/25 w-full"
+            className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:from-violet-500 hover:to-fuchsia-500 transition-all duration-300 hover:scale-[1.02] shadow-lg shadow-fuchsia-500/25 shrink-0"
           >
-            <ExternalLink className="w-4 h-4" /> Open on Instagram
+            <ExternalLink className="w-3.5 h-3.5" /> Open on Instagram
           </a>
         </div>
       </div>

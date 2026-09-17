@@ -35,6 +35,8 @@ import {
   Globe2,
   Instagram,
   Plus,
+  Cloud,
+  Terminal,
 } from "lucide-react";
 import { YTCard, YPLCard, YSCard, LICard, LPCard, BlogCard, EmailCard, TWCard, GitCard, IGCard, THCard, WebCard, LabCard } from "./components/Cards";
 import { Modal } from "./components/Modal";
@@ -43,7 +45,7 @@ import { ThreadsModal } from "./components/ThreadsModal";
 import { useCentralHub } from "./hooks/useCentralHub";
 import { ItemType, HubItem } from "./types";
 // Removed gemini import
-import { parseSlug, classifyUrl, ytId, ytPlaylistId, extractEmailDetails, guessCategoryFromUrl, extractTopicFromLinkedInUrl, extractLinkedInAuthor, extractTwitterUsername, extractInstagramShortcode, extractThreadsShortcode } from "./utils";
+import { parseSlug, classifyUrl, isThreadsUrl, ytId, ytPlaylistId, extractEmailDetails, guessCategoryFromUrl, extractTopicFromLinkedInUrl, extractLinkedInAuthor, extractTwitterUsername, extractInstagramShortcode, extractThreadsShortcode, extractThreadsAuthor } from "./utils";
 import * as XLSX from "xlsx";
 import { logAnalyticsEvent } from "./analytics";
 
@@ -97,6 +99,8 @@ function MainApp() {
   const [modalDefaultEditing, setModalDefaultEditing] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [selectedLPTag, setSelectedLPTag] = useState("");
+  const [selectedLabTag, setSelectedLabTag] = useState("");
+  const [selectedWebTag, setSelectedWebTag] = useState("");
   const [addInput, setAddInput] = useState("");
   const [linkInput, setLinkInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -500,7 +504,20 @@ function MainApp() {
     }
 
     setLoading(true);
-    const t = (classifyUrl(url) || (view === "admin" && adminTab !== "analytics" ? adminTab : currentTab)) as ItemType;
+    let t: ItemType;
+    const activeTab = (view === "admin" && adminTab !== "analytics") ? adminTab : currentTab;
+    if (isThreadsUrl(url)) {
+      t = "th";
+    } else {
+      const detected = classifyUrl(url);
+      if (detected && detected !== "web") {
+        t = detected as ItemType;
+      } else if (activeTab === "lab" || activeTab === "web") {
+        t = activeTab;
+      } else {
+        t = (detected || activeTab || "web") as ItemType;
+      }
+    }
     showToast("Fetching metadata...");
 
     try {
@@ -607,30 +624,74 @@ function MainApp() {
           };
         }
       } else if (t === "th") {
-        const shortcode = extractThreadsShortcode(url) || "";
+        const fallbackShortcode = extractThreadsShortcode(url) || "";
+        const fallbackAuthor = extractThreadsAuthor(url) || "Threads User";
+
+        let fetchedData: any = null;
+        // 1. Try our high-fidelity server endpoint first
         try {
-          const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
-          const d = await res.json();
-          meta = {
-            ...meta,
-            title: d.data?.title || "Threads Post",
-            author: d.data?.author || "Threads User",
-            description: d.data?.description || "Embedded Threads Content",
-            thumbnail: d.data?.image?.url || "",
-            shortcode,
-            tags: [],
-          };
-        } catch (e) {
-          meta = {
-            ...meta,
-            title: "Threads Post",
-            author: "Threads User",
-            description: "Embedded Threads Content",
-            thumbnail: "",
-            shortcode,
-            tags: [],
-          };
+          const apiRes = await fetch(`/api/threads-meta?url=${encodeURIComponent(url)}`);
+          if (apiRes.ok) {
+            const apiJson = await apiRes.json();
+            if (apiJson.success && apiJson.data) {
+              fetchedData = apiJson.data;
+            }
+          }
+        } catch (err) {
+          console.warn("Server threads extraction failed, falling back", err);
         }
+
+        // 2. If server endpoint didn't return data, fallback to Microlink
+        if (!fetchedData) {
+          try {
+            const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
+            const d = await res.json();
+            if (d.data) {
+              fetchedData = {
+                title: d.data.title || "Threads Post",
+                author: d.data.author || fallbackAuthor,
+                description: d.data.description || "",
+                thumbnail: d.data.image?.url || "",
+                images: d.data.image?.url ? [d.data.image.url] : [],
+                shortcode: fallbackShortcode,
+                canonicalUrl: url,
+              };
+            }
+          } catch (e) {
+            console.warn("Microlink fallback failed", e);
+          }
+        }
+
+        const shortcode = fetchedData?.shortcode || fallbackShortcode;
+        const author = fetchedData?.author || fallbackAuthor;
+        const rawTitle = fetchedData?.title || "Threads Post";
+        const title = (rawTitle.includes("Log in") || rawTitle === "Threads")
+          ? (author && author !== "Threads User" ? `${author} on Threads` : "Threads Post")
+          : rawTitle;
+        const description = fetchedData?.description && !fetchedData.description.includes("Join Threads")
+          ? fetchedData.description
+          : "";
+        const thumbnail = fetchedData?.thumbnail || "";
+        const imagesList = Array.isArray(fetchedData?.images) ? fetchedData.images : (thumbnail ? [thumbnail] : []);
+        const mediaList = Array.isArray(fetchedData?.media) && fetchedData.media.length > 0
+          ? fetchedData.media
+          : (thumbnail ? [{ url: thumbnail, type: "image", alt: title }] : []);
+
+        const heading = guessCategoryFromUrl(url) || guessCategoryFromUrl(description) || (author ? author.replace(/^@/, "") : "AWS & Cloud");
+
+        meta = {
+          ...meta,
+          title,
+          author,
+          heading,
+          description: description || "Threads Post",
+          thumbnail,
+          shortcode,
+          images: imagesList.length > 0 ? imagesList : undefined,
+          videoUrl: fetchedData?.videoUrl || undefined,
+          media: mediaList.length > 0 ? mediaList : undefined,
+          tags: heading ? [heading.toLowerCase()] : [],
+        };
       } else if (t === "ig" || t === "igp") {
         const shortcode = extractInstagramShortcode(url) || "";
         try {
@@ -776,6 +837,45 @@ function MainApp() {
             topics: [],
           };
         }
+      } else if (t === "web" || t === "lab") {
+        try {
+          const res = await fetch(`/api/scrape-meta?url=${encodeURIComponent(url)}&type=${t}`);
+          const d = await res.json();
+          if (d.success && d.data) {
+            meta = {
+              ...meta,
+              url: d.data.canonicalUrl || url,
+              title: d.data.title || url,
+              author: d.data.author || "",
+              description: d.data.description || "",
+              thumbnail: d.data.thumbnail || "",
+              favicon: d.data.favicon || "",
+              platform: d.data.platform || (t === "lab" ? "Hands-on Lab" : "Web Resource"),
+              domain: d.data.domain || "",
+              tags: d.data.tags || [],
+              difficulty: d.data.difficulty || "Hands-on",
+              duration: d.data.duration || "Self-paced",
+            };
+          } else {
+            throw new Error("Scrape failed");
+          }
+        } catch (err) {
+          let fallbackDomain = "";
+          try { fallbackDomain = new URL(url).hostname.replace(/^www\./i, ""); } catch(e) {}
+          meta = {
+            ...meta,
+            title: fallbackDomain || url,
+            author: "",
+            description: "",
+            thumbnail: "",
+            favicon: fallbackDomain ? `https://s2.googleusercontent.com/s2/favicons?domain=${fallbackDomain}&sz=128` : "",
+            platform: fallbackDomain ? fallbackDomain.charAt(0).toUpperCase() + fallbackDomain.slice(1) : (t === "lab" ? "Hands-on Lab" : "Web Resource"),
+            domain: fallbackDomain,
+            tags: t === "lab" ? ["Hands-on", "Lab"] : ["Documentation", "Web"],
+            difficulty: "Hands-on",
+            duration: "Self-paced",
+          };
+        }
       } else {
         meta = {
           ...meta,
@@ -824,8 +924,25 @@ function MainApp() {
         item.topics = meta.topics ?? [];
       }
 
+      if (t === "lab") {
+        item.difficulty = meta.difficulty || "Hands-on";
+        item.duration = meta.duration || "Self-paced";
+        item.platform = meta.platform || "Hands-on Lab";
+        item.favicon = meta.favicon || "";
+      }
+      if (t === "web") {
+        item.domain = meta.domain || "";
+        item.favicon = meta.favicon || "";
+        item.platform = meta.platform || "Web Resource";
+      }
+
       if (t === "ig" || t === "igp") item.shortcode = meta.shortcode || "";
-      if (t === "th") item.shortcode = meta.shortcode || "";
+      if (t === "th") {
+        item.shortcode = meta.shortcode || "";
+        if (meta.media) item.media = meta.media;
+        if (meta.images) item.images = meta.images;
+        if (meta.videoUrl) item.videoUrl = meta.videoUrl;
+      }
       await addItem(t as ItemType, item);
       showToast("Link added successfully!");
       setAddInput("");
@@ -852,8 +969,8 @@ function MainApp() {
         url,
         date,
         ts: id,
-        title: url,
-        author: "",
+        title: t === "th" ? (extractThreadsAuthor(url) ? `${extractThreadsAuthor(url)} on Threads` : "Threads Post") : url,
+        author: t === "th" ? extractThreadsAuthor(url) : "",
         thumbnail: "",
         description: "",
         tags: [],
@@ -898,6 +1015,26 @@ function MainApp() {
       items = items.filter((x: any) => x.heading?.toLowerCase().includes(selectedLPTag.toLowerCase()) || x.title?.toLowerCase().includes(selectedLPTag.toLowerCase())) as any;
     }
 
+    if (tabToRender === "lab" && selectedLabTag) {
+      items = items.filter((x: any) => {
+        const tagMatch = Array.isArray(x.tags) && x.tags.some((t: string) => t.toLowerCase() === selectedLabTag.toLowerCase());
+        const platMatch = x.platform?.toLowerCase().includes(selectedLabTag.toLowerCase());
+        const diffMatch = x.difficulty?.toLowerCase().includes(selectedLabTag.toLowerCase());
+        const titleMatch = x.title?.toLowerCase().includes(selectedLabTag.toLowerCase());
+        return tagMatch || platMatch || diffMatch || titleMatch;
+      }) as any;
+    }
+
+    if (tabToRender === "web" && selectedWebTag) {
+      items = items.filter((x: any) => {
+        const tagMatch = Array.isArray(x.tags) && x.tags.some((t: string) => t.toLowerCase() === selectedWebTag.toLowerCase());
+        const platMatch = x.platform?.toLowerCase().includes(selectedWebTag.toLowerCase());
+        const titleMatch = x.title?.toLowerCase().includes(selectedWebTag.toLowerCase());
+        const domainMatch = x.domain?.toLowerCase().includes(selectedWebTag.toLowerCase());
+        return tagMatch || platMatch || titleMatch || domainMatch;
+      }) as any;
+    }
+
     if (searchDate) {
       items = items.filter((x) => {
         if (!x.ts) return false;
@@ -924,6 +1061,9 @@ function MainApp() {
           (x as any).handle,
           (x as any).location,
           (x as any).postType,
+          (x as any).difficulty,
+          (x as any).duration,
+          (x as any).domain,
         ];
         
         if (Array.isArray((x as any).topics)) searchableFields.push(...(x as any).topics);
@@ -1115,6 +1255,28 @@ function MainApp() {
                 onDelete={props.onDelete}
               />
             );
+          if (tabToRender === "web")
+            return (
+              <WebCard
+                key={item.id}
+                item={item}
+                onStar={props.onStar}
+                onCopy={props.onCopy}
+                onClick={props.onClick}
+                onDelete={props.onDelete}
+              />
+            );
+          if (tabToRender === "lab")
+            return (
+              <LabCard
+                key={item.id}
+                item={item}
+                onStar={props.onStar}
+                onCopy={props.onCopy}
+                onClick={props.onClick}
+                onDelete={props.onDelete}
+              />
+            );
           return (
             <LPCard
               key={item.id}
@@ -1122,7 +1284,7 @@ function MainApp() {
               onStar={props.onStar}
               onCopy={props.onCopy}
               onClick={props.onClick}
-                onDelete={props.onDelete}
+              onDelete={props.onDelete}
               onEnrich={props.onEnrich}
             />
           );
@@ -1655,6 +1817,60 @@ function MainApp() {
                         />
                       </div>
                     )}
+                    {(adminTab === "lab" || adminTab === "web") && (
+                      <div className="flex flex-col gap-2 mt-3 w-full" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input 
+                            className="w-full max-w-[320px] bg-transparent hover:bg-white/[0.03] border border-white/10 focus:bg-white/[0.05] rounded-lg px-3 py-1.5 text-sm text-white placeholder-white/30 focus:border-amber-500/50 focus:outline-none transition-all"
+                            placeholder="Title / Name"
+                            value={item.title || ""}
+                            onChange={(e) =>
+                              updateItem(adminTab, item.id, { title: e.target.value })
+                            }
+                          />
+                          <input 
+                            className="w-40 bg-transparent hover:bg-white/[0.03] border border-white/10 focus:bg-white/[0.05] rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/30 focus:border-amber-500/50 focus:outline-none transition-all"
+                            placeholder="Platform (e.g. KodeKloud)"
+                            value={(item as any).platform || ""}
+                            onChange={(e) =>
+                              updateItem(adminTab, item.id, { platform: e.target.value })
+                            }
+                          />
+                          {adminTab === "lab" && (
+                            <>
+                              <select
+                                className="bg-[#09090b] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-amber-500/50 focus:outline-none cursor-pointer"
+                                value={(item as any).difficulty || "Hands-on"}
+                                onChange={(e) =>
+                                  updateItem("lab", item.id, { difficulty: e.target.value })
+                                }
+                              >
+                                <option value="Hands-on">Hands-on</option>
+                                <option value="Beginner">Beginner</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Advanced">Advanced</option>
+                              </select>
+                              <input 
+                                className="w-28 bg-transparent hover:bg-white/[0.03] border border-white/10 focus:bg-white/[0.05] rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/30 focus:border-amber-500/50 focus:outline-none transition-all"
+                                placeholder="Duration (e.g. 45m)"
+                                value={(item as any).duration || ""}
+                                onChange={(e) =>
+                                  updateItem("lab", item.id, { duration: e.target.value })
+                                }
+                              />
+                            </>
+                          )}
+                        </div>
+                        <textarea
+                          className="w-full max-w-[520px] bg-white/[0.03] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/30 focus:border-amber-500/50 focus:outline-none transition-all h-14 resize-none font-light"
+                          placeholder="Description / notes..."
+                          value={item.description || ""}
+                          onChange={(e) =>
+                            updateItem(adminTab, item.id, { description: e.target.value })
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     {item.url && (
@@ -1703,24 +1919,35 @@ function MainApp() {
           </div>
         </div>
 
-        {selectedItem?.type === "th" ? (
-        <ThreadsModal
-          item={selectedItem}
-          onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
-          onStar={() => {
-            if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
-            setSelectedItem((prev) =>
-              prev ? { ...prev, starred: !prev.starred } : null,
-            );
-          }}
-          onCopy={() => {
-            if (selectedItem) {
-              navigator.clipboard.writeText(selectedItem.url);
-              showToast("Threads link copied!");
-            }
-          }}
-        />
-      ) : (selectedItem?.type === "ig" || selectedItem?.type === "igp") ? (
+        {selectedItem?.type === "th" ? (() => {
+          const thItems = db.th || [];
+          const currentIdx = thItems.findIndex((x) => x.id === selectedItem.id);
+          const hasPrev = currentIdx > 0;
+          const hasNext = currentIdx >= 0 && currentIdx < thItems.length - 1;
+
+          return (
+            <ThreadsModal
+              item={selectedItem}
+              currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
+              totalCount={thItems.length > 0 ? thItems.length : undefined}
+              onPrev={hasPrev ? () => setSelectedItem(thItems[currentIdx - 1]) : undefined}
+              onNext={hasNext ? () => setSelectedItem(thItems[currentIdx + 1]) : undefined}
+              onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
+              onStar={() => {
+                if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
+                setSelectedItem((prev) =>
+                  prev ? { ...prev, starred: !prev.starred } : null,
+                );
+              }}
+              onCopy={() => {
+                if (selectedItem) {
+                  navigator.clipboard.writeText(selectedItem.url);
+                  showToast("Threads link copied!");
+                }
+              }}
+            />
+          );
+        })() : (selectedItem?.type === "ig" || selectedItem?.type === "igp") ? (
         <InstagramModal
           item={selectedItem}
           onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
@@ -2097,6 +2324,28 @@ function MainApp() {
                       </div>
                   </button>
               ))}
+
+              <div className="pt-3 pb-1">
+                <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-2">Diagrams</div>
+                <button
+                  onClick={() => {
+                    setView("landing");
+                    setTimeout(() => {
+                      const el = document.getElementById("architecture");
+                      el?.scrollIntoView({ behavior: "smooth" });
+                    }, 150);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 border border-orange-500/30 group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Cloud className="w-4 h-4 text-orange-400 group-hover:scale-110 transition-transform" />
+                    <span className="font-semibold">AWS Architecture</span>
+                  </div>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-300 font-mono">
+                    LIVE
+                  </span>
+                </button>
+              </div>
           </div>
       </div>
 
@@ -2268,6 +2517,46 @@ function MainApp() {
                       </div>
                     </div>
                  )}
+
+                  {currentTab === "lab" && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                      <div className="flex items-center gap-2 font-medium text-sm">
+                        <span className="text-amber-400 shrink-0 mr-2 flex items-center gap-1.5"><Terminal className="w-4 h-4" /> Lab Filters</span>
+                        {["All", "KodeKloud", "Hands-on", "AWS", "Kubernetes", "DevSecOps", "Docker", "Terraform", "Linux", "CI/CD"].map(tag => {
+                          const isSelected = (tag === "All" && !selectedLabTag) || selectedLabTag === tag;
+                          return (
+                            <button
+                              key={tag}
+                              onClick={() => setSelectedLabTag(tag === "All" || selectedLabTag === tag ? "" : tag)}
+                              className={`px-3.5 py-1.5 rounded-full text-xs whitespace-nowrap transition-all border ${isSelected ? "bg-amber-500/15 text-amber-300 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.15)]" : "bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border-white/10"}`}
+                            >
+                              {tag}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {currentTab === "web" && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                      <div className="flex items-center gap-2 font-medium text-sm">
+                        <span className="text-blue-400 shrink-0 mr-2 flex items-center gap-1.5"><Globe2 className="w-4 h-4" /> Categories</span>
+                        {["All", "Documentation", "Cheatsheets", "Kubernetes", "Docker", "DevOps", "Cloud", "Security", "Tools"].map(tag => {
+                          const isSelected = (tag === "All" && !selectedWebTag) || selectedWebTag === tag;
+                          return (
+                            <button
+                              key={tag}
+                              onClick={() => setSelectedWebTag(tag === "All" || selectedWebTag === tag ? "" : tag)}
+                              className={`px-3.5 py-1.5 rounded-full text-xs whitespace-nowrap transition-all border ${isSelected ? "bg-blue-500/15 text-blue-300 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.15)]" : "bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border-white/10"}`}
+                            >
+                              {tag}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
              </div>
              
              <div className="block">
@@ -2276,24 +2565,65 @@ function MainApp() {
         </main>
       </div>
 
-      {(selectedItem?.type === "ig" || selectedItem?.type === "igp") ? (
-        <InstagramModal
-          item={selectedItem}
-          onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
-          onStar={() => {
-            if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
-            setSelectedItem((prev) =>
-              prev ? { ...prev, starred: !prev.starred } : null,
-            );
-          }}
-          onCopy={() => {
-            if (selectedItem) {
-              navigator.clipboard.writeText(selectedItem.url);
-              showToast("Instagram link copied!");
-            }
-          }}
-        />
-      ) : (
+      {selectedItem?.type === "th" ? (() => {
+        const thItems = db.th || [];
+        const currentIdx = thItems.findIndex((x) => x.id === selectedItem.id);
+        const hasPrev = currentIdx > 0;
+        const hasNext = currentIdx >= 0 && currentIdx < thItems.length - 1;
+
+        return (
+          <ThreadsModal
+            item={selectedItem}
+            currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
+            totalCount={thItems.length > 0 ? thItems.length : undefined}
+            onPrev={hasPrev ? () => setSelectedItem(thItems[currentIdx - 1]) : undefined}
+            onNext={hasNext ? () => setSelectedItem(thItems[currentIdx + 1]) : undefined}
+            onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
+            onStar={() => {
+              if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
+              setSelectedItem((prev) =>
+                prev ? { ...prev, starred: !prev.starred } : null,
+              );
+            }}
+            onCopy={() => {
+              if (selectedItem) {
+                navigator.clipboard.writeText(selectedItem.url);
+                showToast("Threads link copied!");
+              }
+            }}
+          />
+        );
+      })() : (selectedItem?.type === "ig" || selectedItem?.type === "igp") ? (() => {
+        const igItems = (currentTab === "ig" || currentTab === "igp")
+          ? (db[currentTab] || [])
+          : [...(db.ig || []), ...(db.igp || [])];
+        const currentIdx = igItems.findIndex((x) => x.id === selectedItem.id);
+        const hasPrev = currentIdx > 0;
+        const hasNext = currentIdx >= 0 && currentIdx < igItems.length - 1;
+
+        return (
+          <InstagramModal
+            item={selectedItem}
+            currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
+            totalCount={igItems.length > 0 ? igItems.length : undefined}
+            onPrev={hasPrev ? () => setSelectedItem(igItems[currentIdx - 1]) : undefined}
+            onNext={hasNext ? () => setSelectedItem(igItems[currentIdx + 1]) : undefined}
+            onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
+            onStar={() => {
+              if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
+              setSelectedItem((prev) =>
+                prev ? { ...prev, starred: !prev.starred } : null,
+              );
+            }}
+            onCopy={() => {
+              if (selectedItem) {
+                navigator.clipboard.writeText(selectedItem.url);
+                showToast("Instagram link copied!");
+              }
+            }}
+          />
+        );
+      })() : (
         <Modal
                 item={selectedItem}
                 defaultEditing={modalDefaultEditing}
