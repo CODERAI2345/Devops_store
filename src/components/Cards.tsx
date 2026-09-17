@@ -1053,7 +1053,7 @@ export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onC
       </div>
 
       {/* Inner Card Layer */}
-      <div className={`relative m-[2px] rounded-[14px] bg-transparent flex flex-col justify-between overflow-hidden z-10 h-[calc(100%-4px)]`}>
+      <div className={`relative m-[2px] rounded-[14px] ${theme.cardBg} flex flex-col justify-between overflow-hidden z-10 h-[calc(100%-4px)]`}>
         {/* Top action buttons (Only Star & Delete) */}
       <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
         <button
@@ -1082,7 +1082,7 @@ export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onC
       </div>
 
       {/* Top Banner (Solid Color + Logo) */}
-      <div className={`w-full aspect-video ${theme.banner} relative flex flex-col items-center justify-center p-4 flex-1`}>
+      <div className={`w-full h-36 ${theme.banner} relative flex flex-col items-center justify-center p-4`}>
         {item.thumbnail && (
           <img 
             src={item.thumbnail} 
@@ -1114,10 +1114,32 @@ export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onC
       </div>
 
       {/* Body description & tags */}
-      <div className="px-4 py-3.5 flex items-center justify-center border-t border-white/5 bg-black/20 backdrop-blur-sm mt-auto">
-        <h3 className="font-bold text-white text-[15px] leading-tight line-clamp-1 text-center group-hover:text-white/90 transition-colors">
-          {item.title || domain}
-        </h3>
+      <div className="p-5 flex-1 flex flex-col justify-between">
+        <div>
+          <h3 className="font-bold text-white text-lg leading-tight line-clamp-1 mb-1.5 group-hover:text-white/90 transition-colors">
+            {item.title || domain}
+          </h3>
+          <p className="text-[13px] text-slate-400 line-clamp-2 leading-relaxed mb-4">
+            {item.description || "Curated documentation, architecture reference, or tool for your cloud & DevOps journey."}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3 mt-auto">
+          <div className="flex items-center gap-2 text-[13px] font-medium">
+            <LinkIcon className={`w-3.5 h-3.5 ${theme.link}`} />
+            <span className={`${theme.link} truncate`}>{domain}</span>
+          </div>
+
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/5 mt-1">
+              {tags.slice(0, 4).map((t: string) => (
+                <span key={t} className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${theme.tagBg} ${theme.tagText} border ${theme.tagBorder} rounded-md`}>
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       </div>
     </div>
