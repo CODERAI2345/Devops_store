@@ -84,10 +84,17 @@ export function LazyIframe({ src, title, className, ...props }: any) {
 export const YTCard = React.memo(function YTCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col"
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.05] hover:shadow-[0_8px_30px_rgba(255,0,0,0.15)] hover:-translate-y-1 transition-all duration-500 cursor-pointer"
       onClick={onClick}
     >
-      <div className="relative aspect-video w-full overflow-hidden bg-white/[0.03]">
+      {/* Outer animated spark wrapper */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_50%,#ff0000_80%,#ffffff_100%)]" />
+      </div>
+
+      {/* Inner Card Layer */}
+      <div className="relative m-[2px] rounded-[14px] bg-[#0a0a0a] flex flex-col overflow-hidden z-10 h-[calc(100%-4px)] transition-colors">
+        <div className="relative aspect-video w-full overflow-hidden bg-white/[0.03]">
         {item.thumbnail ? (
           <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy"
             src={item.thumbnail}
@@ -143,6 +150,7 @@ export const YTCard = React.memo(function YTCard({ item, onStar, onDelete, onCop
              {item.author}
            </div>
         )}
+      </div>
       </div>
     </div>
   );
@@ -660,10 +668,17 @@ export const GitCard = React.memo(function GitCard({ item, onStar, onDelete, onC
 
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col h-full"
+      className="group relative h-full overflow-hidden rounded-2xl bg-white/[0.05] hover:shadow-[0_8px_30px_rgba(46,160,67,0.15)] hover:-translate-y-1 transition-all duration-500 cursor-pointer"
       onClick={onClick}
     >
-      <div className="flex justify-between items-center p-3 shrink-0">
+      {/* Outer animated spark wrapper */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_50%,#2ea043_80%,#ffffff_100%)]" />
+      </div>
+
+      {/* Inner Card Layer */}
+      <div className="relative m-[2px] rounded-[14px] bg-[#0d1117] flex flex-col overflow-hidden z-10 h-[calc(100%-4px)] transition-colors">
+        <div className="flex justify-between items-center p-3 shrink-0">
          <div className="flex items-center gap-2 text-xs font-medium text-[#848d97]">
             <Github className="w-4 h-4 text-white" />
             GitHub Repository
@@ -744,17 +759,20 @@ export const GitCard = React.memo(function GitCard({ item, onStar, onDelete, onC
           View Repository <ExternalLink className="w-3.5 h-3.5" />
         </a>
       </div>
+      </div>
     </div>
   );
 });
 export const IGCard = React.memo(function IGCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col h-[500px]"
-      onClick={onClick}
+      className="group relative overflow-hidden rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-violet-500/50 hover:-translate-y-1 transition-all duration-500 flex flex-col h-[500px]"
     >
       {/* Header */}
-      <div className="p-3 border-b border-[#38434f] flex items-center justify-between shrink-0 bg-[#1d2226]">
+      <div 
+        className="p-3 border-b border-[#38434f] flex items-center justify-between shrink-0 bg-[#1d2226] cursor-pointer"
+        onClick={onClick}
+      >
         <div className="flex items-center gap-2">
           <div className="flex items-center justify-center shrink-0">
             <Instagram className="w-5 h-5 text-pink-400" />
@@ -789,23 +807,22 @@ export const IGCard = React.memo(function IGCard({ item, onStar, onDelete, onCop
       </div>
       
       <div className="flex-1 relative bg-[#1a1a1a] flex flex-col">
-         {/* Transparent overlay to capture clicks and trigger the modal over the iframe */}
-         <div className="absolute inset-0 z-10 cursor-pointer" />
          {item.shortcode ? (
             <LazyIframe
-              src={`https://www.instagram.com/p/${item.shortcode}/embed/captioned`}
+              src={`https://www.instagram.com/p/${item.shortcode}/embed`}
               title="Instagram embed"
               className="w-full h-full absolute inset-0 bg-black/20"
+              allow="encrypted-media"
             />
          ) : (
-            <div className="absolute inset-0 p-4 overflow-y-auto custom-scrollbar flex flex-col">
+            <div className="absolute inset-0 p-4 overflow-y-auto custom-scrollbar flex flex-col" onClick={onClick}>
                {item.thumbnail && item.thumbnail !== "" ? (
                  <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy" src={item.thumbnail} alt="Instagram content" className="w-full h-auto rounded-lg mb-4 object-contain max-h-[250px] bg-white/[0.03] border border-white/10" />
                ) : null}
-               <div className="text-white text-sm whitespace-pre-wrap leading-relaxed">
+               <div className="text-white text-sm whitespace-pre-wrap leading-relaxed cursor-pointer">
                   {item.description && item.description !== "Embedded Instagram Content" && !item.description.includes("Join Threads") ? item.description : "View on Instagram"}
                </div>
-               <a href={item.url} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center justify-center bg-white/[0.05] hover:bg-black/20/20 transition-colors text-white text-xs font-semibold px-4 py-2 rounded-full w-max">
+               <a href={item.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="mt-4 inline-flex items-center justify-center bg-white/[0.05] hover:bg-black/20/20 transition-colors text-white text-xs font-semibold px-4 py-2 rounded-full w-max">
                   Open on Instagram
                </a>
             </div>
@@ -936,57 +953,115 @@ export const THCard = React.memo(function THCard({ item, onStar, onDelete, onCop
 
 
 
-export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
+export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onClick }: CardProps) {
   let domain = "website.com";
   try {
     domain = new URL(item.url).hostname.replace(/^www\./i, "");
   } catch(e) {}
   
-  const [copied, setCopied] = React.useState(false);
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onCopy();
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const favicon = item.favicon || `https://s2.googleusercontent.com/s2/favicons?domain=${domain}&sz=128`;
   const platform = (item as any).platform || domain;
   const tags: string[] = Array.isArray((item as any).tags) ? (item as any).tags : [];
+
+  const colorSchemes = [
+    { 
+      banner: "bg-teal-600", 
+      cardBg: "bg-[#041111]", 
+      border: "border-teal-900/40", 
+      wrapperBg: "bg-teal-900/20",
+      hoverShadow: "hover:shadow-[0_8px_30px_rgba(13,148,136,0.2)]",
+      tagBg: "bg-teal-500/10", 
+      tagText: "text-teal-400", 
+      tagBorder: "border-teal-500/20",
+      link: "text-teal-400",
+      buttonBg: "bg-[#041111]/80 hover:bg-teal-500/30",
+    },
+    { 
+      banner: "bg-indigo-600", 
+      cardBg: "bg-[#090916]", 
+      border: "border-indigo-900/40", 
+      wrapperBg: "bg-indigo-900/20",
+      hoverShadow: "hover:shadow-[0_8px_30px_rgba(79,70,229,0.2)]", 
+      tagBg: "bg-indigo-500/10", 
+      tagText: "text-indigo-400", 
+      tagBorder: "border-indigo-500/20",
+      link: "text-indigo-400",
+      buttonBg: "bg-[#090916]/80 hover:bg-indigo-500/30",
+    },
+    { 
+      banner: "bg-rose-600", 
+      cardBg: "bg-[#160408]", 
+      border: "border-rose-900/40", 
+      wrapperBg: "bg-rose-900/20",
+      hoverShadow: "hover:shadow-[0_8px_30px_rgba(225,29,72,0.2)]", 
+      tagBg: "bg-rose-500/10", 
+      tagText: "text-rose-400", 
+      tagBorder: "border-rose-500/20",
+      link: "text-rose-400",
+      buttonBg: "bg-[#160408]/80 hover:bg-rose-500/30",
+    },
+    { 
+      banner: "bg-amber-600", 
+      cardBg: "bg-[#160f04]", 
+      border: "border-amber-900/40", 
+      wrapperBg: "bg-amber-900/20",
+      hoverShadow: "hover:shadow-[0_8px_30px_rgba(217,119,6,0.2)]", 
+      tagBg: "bg-amber-500/10", 
+      tagText: "text-amber-400", 
+      tagBorder: "border-amber-500/20",
+      link: "text-amber-400",
+      buttonBg: "bg-[#160f04]/80 hover:bg-amber-500/30",
+    },
+    { 
+      banner: "bg-blue-700", 
+      cardBg: "bg-[#040b16]", 
+      border: "border-blue-900/40", 
+      wrapperBg: "bg-blue-900/20",
+      hoverShadow: "hover:shadow-[0_8px_30px_rgba(29,78,216,0.2)]", 
+      tagBg: "bg-blue-500/10", 
+      tagText: "text-blue-400", 
+      tagBorder: "border-blue-500/20",
+      link: "text-blue-400",
+      buttonBg: "bg-[#040b16]/80 hover:bg-blue-500/30",
+    },
+    { 
+      banner: "bg-emerald-600", 
+      cardBg: "bg-[#04140a]", 
+      border: "border-emerald-900/40", 
+      wrapperBg: "bg-emerald-900/20",
+      hoverShadow: "hover:shadow-[0_8px_30px_rgba(5,150,105,0.2)]", 
+      tagBg: "bg-emerald-500/10", 
+      tagText: "text-emerald-400", 
+      tagBorder: "border-emerald-500/20",
+      link: "text-emerald-400",
+      buttonBg: "bg-[#04140a]/80 hover:bg-emerald-500/30",
+    }
+  ];
+
+  const colorIndex = Array.from(domain).reduce((acc, char) => acc + char.charCodeAt(0), 0) % colorSchemes.length;
+  const theme = colorSchemes[colorIndex];
 
   return (
     <div 
       key={item.id}
       onClick={onClick}
-      className="group relative overflow-hidden rounded-2xl bg-[#0d0f17]/90 border border-white/[0.08] hover:border-violet-500/50 hover:shadow-[0_8px_30px_rgba(139,92,246,0.15)] hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between"
+      className={`group relative overflow-hidden rounded-2xl ${theme.wrapperBg} ${theme.hoverShadow} hover:-translate-y-1 transition-all duration-300 cursor-pointer`}
     >
-      {/* Top action buttons */}
-      <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
-        <button
-          onClick={handleCopy}
-          className="w-8 h-8 rounded-full bg-black/60 text-white/50 hover:text-white hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all backdrop-blur-sm"
-          title="Copy Link"
-        >
-          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-        </button>
+      {/* Outer animated spark wrapper (shows through the 1.5px inner margin) */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_50%,#f4a460_80%,#ffffff_100%)]" />
+      </div>
 
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="w-8 h-8 rounded-full bg-black/60 text-white/50 hover:text-blue-400 hover:bg-blue-500/10 border border-white/10 flex items-center justify-center transition-all backdrop-blur-sm"
-          title="Open website"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
-
+      {/* Inner Card Layer */}
+      <div className={`relative m-[2px] rounded-[14px] bg-transparent flex flex-col justify-between overflow-hidden z-10 h-[calc(100%-4px)]`}>
+        {/* Top action buttons (Only Star & Delete) */}
+      <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onStar();
           }}
-          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${item.starred ? "bg-amber-400/20 text-amber-400 border border-amber-400/30 shadow-[0_0_12px_rgba(251,191,36,0.25)]" : "bg-black/60 text-white/40 hover:text-white border border-white/10"}`}
+          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${item.starred ? "bg-white text-amber-500 shadow-md" : `${theme.buttonBg} text-white/70 shadow-sm border border-white/10`}`}
           title="Star website"
         >
           <Star className="w-3.5 h-3.5" fill={item.starred ? "currentColor" : "none"} />
@@ -998,7 +1073,7 @@ export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onC
               e.stopPropagation();
               onDelete();
             }}
-            className="w-8 h-8 rounded-full bg-black/60 text-white/40 hover:text-rose-400 hover:bg-rose-500/20 border border-white/10 flex items-center justify-center transition-all backdrop-blur-sm opacity-0 group-hover:opacity-100"
+            className={`w-7 h-7 rounded-full ${theme.buttonBg} text-white/70 hover:text-rose-400 shadow-sm border border-white/10 flex items-center justify-center transition-all backdrop-blur-sm opacity-0 group-hover:opacity-100`}
             title="Delete website"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -1006,72 +1081,44 @@ export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onC
         )}
       </div>
 
-      {/* Header with platform & domain */}
-      <div className="p-5 flex gap-3.5 items-start border-b border-white/[0.06] bg-gradient-to-r from-blue-500/[0.04] via-transparent to-transparent">
-        <div className="w-12 h-12 rounded-xl bg-white/[0.04] flex items-center justify-center overflow-hidden border border-white/10 shrink-0 p-2.5 shadow-inner">
-          <img 
-            loading="lazy" 
-            src={favicon} 
-            alt={domain} 
-            className="w-full h-full object-contain drop-shadow" 
-            onError={(e) => { 
-              e.currentTarget.style.display = 'none'; 
-              const next = e.currentTarget.nextElementSibling;
-              if (next) next.classList.remove('hidden'); 
-            }} 
-          />
-          <Globe2 className="w-5 h-5 text-blue-400/70 hidden" />
-        </div>
-        <div className="flex flex-col pr-24 min-w-0">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-blue-400/90 truncate flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-            {platform}
-          </span>
-          <h3 className="font-semibold text-white text-base leading-snug line-clamp-2 mt-0.5 group-hover:text-blue-300 transition-colors">
-            {item.title || domain}
-          </h3>
-        </div>
-      </div>
-
-      {/* Optional Thumbnail if available */}
-      {item.thumbnail && (
-        <div className="w-full h-36 bg-black/40 overflow-hidden relative border-b border-white/[0.05]">
+      {/* Top Banner (Solid Color + Logo) */}
+      <div className={`w-full aspect-video ${theme.banner} relative flex flex-col items-center justify-center p-4 flex-1`}>
+        {item.thumbnail && (
           <img 
             src={item.thumbnail} 
             alt={item.title || "Website preview"} 
-            className="w-full h-full object-cover opacity-80 group-hover:scale-105 group-hover:opacity-100 transition-all duration-500"
-            onError={(e) => { e.currentTarget.parentElement?.classList.add('hidden'); }}
+            className="w-full h-full absolute inset-0 object-cover pointer-events-none"
           />
-        </div>
-      )}
+        )}
+        
+        {!item.thumbnail && (
+          <div className="flex flex-col items-center gap-3 z-10">
+            <img 
+              loading="lazy" 
+              src={favicon} 
+              alt={domain} 
+              className="w-12 h-12 rounded-xl object-contain bg-white/20 p-2 backdrop-blur-md shadow-lg" 
+              onError={(e) => { 
+                e.currentTarget.style.display = 'none'; 
+                const next = e.currentTarget.nextElementSibling;
+                if (next) next.classList.remove('hidden'); 
+              }} 
+            />
+            <Globe2 className="w-8 h-8 text-white/80 hidden drop-shadow-md" />
+            
+            <h3 className="font-bold text-white text-xl tracking-wide drop-shadow-md text-center line-clamp-1 px-4">
+              {platform}
+            </h3>
+          </div>
+        )}
+      </div>
 
       {/* Body description & tags */}
-      <div className="p-5 flex-1 flex flex-col justify-between">
-        <p className="text-xs text-zinc-300 line-clamp-3 leading-relaxed mb-4 font-light">
-          {item.description || "Curated documentation, architecture reference, or tool for your cloud & DevOps journey."}
-        </p>
-
-        <div className="flex flex-col gap-3 mt-auto">
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {tags.slice(0, 4).map((t: string) => (
-                <span key={t} className="px-2 py-0.5 text-[11px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20 rounded-md">
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-3 border-t border-white/[0.06]">
-            <span className="truncate flex items-center gap-1.5 font-mono text-zinc-400">
-              <LinkIcon className="w-3 h-3 text-blue-400/70" />
-              {domain}
-            </span>
-            <span className="text-blue-400/80 font-medium group-hover:text-blue-300 flex items-center gap-1 transition-colors">
-              Visit Site <ExternalLink className="w-2.5 h-2.5" />
-            </span>
-          </div>
-        </div>
+      <div className="px-4 py-3.5 flex items-center justify-center border-t border-white/5 bg-black/20 backdrop-blur-sm mt-auto">
+        <h3 className="font-bold text-white text-[15px] leading-tight line-clamp-1 text-center group-hover:text-white/90 transition-colors">
+          {item.title || domain}
+        </h3>
+      </div>
       </div>
     </div>
   );
@@ -1093,33 +1140,42 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
   const duration = (item as any).duration || "Self-paced";
   const difficulty = ((item as any).difficulty || "Hands-on").toLowerCase();
   
-  let difficultyClass = "text-blue-700 bg-blue-50 border-blue-200";
+  let difficultyClass = "text-blue-700 bg-blue-100 border-blue-200";
   let difficultyLabel = "Hands-on";
   if (difficulty.includes("beginner") || difficulty.includes("intro") || difficulty.includes("easy")) {
-    difficultyClass = "text-emerald-700 bg-emerald-50 border-emerald-200";
+    difficultyClass = "text-emerald-700 bg-emerald-100 border-emerald-200";
     difficultyLabel = "Beginner";
   } else if (difficulty.includes("intermediate") || difficulty.includes("medium")) {
-    difficultyClass = "text-amber-700 bg-amber-50 border-amber-200";
+    difficultyClass = "text-amber-700 bg-amber-100 border-amber-200";
     difficultyLabel = "Intermediate";
   } else if (difficulty.includes("advanced") || difficulty.includes("hard") || difficulty.includes("expert")) {
-    difficultyClass = "text-rose-700 bg-rose-50 border-rose-200";
+    difficultyClass = "text-rose-700 bg-rose-100 border-rose-200";
     difficultyLabel = "Advanced";
   }
+
+  const [isHovered, setIsHovered] = React.useState(false);
 
   return (
     <div 
       key={item.id}
       onClick={onClick}
-      className="group relative overflow-hidden rounded-2xl bg-white border border-slate-200 hover:border-amber-400 hover:shadow-[0_8px_30px_rgba(245,158,11,0.15)] hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between"
+      className={`group relative overflow-hidden rounded-2xl bg-amber-200/70 hover:shadow-[0_8px_30px_rgba(245,158,11,0.18)] hover:-translate-y-1 transition-all duration-300 cursor-pointer`}
     >
-      {/* Top action buttons (Only Star & Delete) */}
+      {/* Outer animated spark wrapper (shows through the 2px inner margin) */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_50%,#ff00ff_80%,#ffffff_100%)]" />
+      </div>
+
+      {/* Inner Card Layer */}
+      <div className={`relative m-[2px] rounded-[14px] bg-amber-50/95 flex flex-col justify-between overflow-hidden z-10 h-[calc(100%-4px)]`}>
+        {/* Top action buttons (Only Star & Delete) */}
       <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onStar();
           }}
-          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${item.starred ? "bg-amber-400 text-white shadow-md border border-amber-500" : "bg-white/90 text-slate-400 hover:text-amber-500 hover:bg-white shadow-sm border border-slate-200"}`}
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${item.starred ? "bg-amber-500 text-white shadow-md border border-amber-600" : "bg-white/90 text-amber-300 hover:text-amber-600 hover:bg-white shadow-sm border border-amber-100"}`}
           title="Star Lab"
         >
           <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
@@ -1131,7 +1187,7 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
               e.stopPropagation();
               onDelete();
             }}
-            className="w-8 h-8 rounded-full bg-white/90 text-slate-400 hover:text-rose-500 hover:bg-white shadow-sm border border-slate-200 flex items-center justify-center transition-all backdrop-blur-sm opacity-0 group-hover:opacity-100"
+            className="w-8 h-8 rounded-full bg-white/90 text-slate-400 hover:text-rose-500 hover:bg-white shadow-sm border border-amber-100 flex items-center justify-center transition-all backdrop-blur-sm opacity-0 group-hover:opacity-100"
             title="Delete Lab"
           >
             <Trash2 className="w-4 h-4" />
@@ -1140,7 +1196,7 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
       </div>
 
       {/* Visual Cover / Terminal Preview Banner */}
-      <div className="w-full aspect-video bg-gradient-to-br from-slate-100 to-indigo-50 relative border-b border-slate-200 flex items-center justify-center overflow-hidden">
+      <div className="w-full aspect-video bg-gradient-to-br from-amber-100 to-orange-50 relative border-b border-amber-200/70 flex items-center justify-center overflow-hidden">
         {item.thumbnail ? (
           <img 
             onError={(e) => { 
@@ -1156,11 +1212,11 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
         ) : null}
 
         <div className={`lab-cover-fallback absolute inset-0 flex flex-col items-center justify-center p-6 text-center ${item.thumbnail ? 'hidden' : 'flex'}`}>
-          <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
-            <Terminal className="w-7 h-7 text-indigo-600" />
+          <div className="w-14 h-14 rounded-2xl bg-white border border-amber-200 flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
+            <Terminal className="w-7 h-7 text-amber-600" />
           </div>
-          <span className="text-xs font-bold text-slate-700 tracking-wide uppercase">{platformName}</span>
-          <span className="text-[11px] text-slate-500 mt-1">Interactive Hands-on Lab</span>
+          <span className="text-xs font-bold text-amber-900 tracking-wide uppercase">{platformName}</span>
+          <span className="text-[11px] text-amber-700/70 mt-1">Interactive Hands-on Lab</span>
         </div>
 
         {/* Floating difficulty badge */}
@@ -1168,19 +1224,19 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border shadow-sm ${difficultyClass}`}>
             {difficultyLabel}
           </span>
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white border border-slate-200 text-slate-700 shadow-sm">
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/90 border border-amber-200 text-amber-900 shadow-sm backdrop-blur-sm">
             {platformName}
           </span>
         </div>
       </div>
 
       {/* Body details */}
-      <div className="p-5 flex-1 flex flex-col justify-between bg-white">
+      <div className="p-5 flex-1 flex flex-col justify-between bg-transparent">
         <div>
-          <h3 className="font-extrabold text-slate-900 text-lg leading-tight line-clamp-2 mb-2 group-hover:text-amber-600 transition-colors">
+          <h3 className="font-extrabold text-amber-950 text-lg leading-tight line-clamp-2 mb-2 group-hover:text-amber-700 transition-colors">
             {item.title || "Interactive Lab Course"}
           </h3>
-          <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed mb-4">
+          <p className="text-sm text-amber-900/70 line-clamp-2 leading-relaxed mb-4">
             {item.description || "Hands-on cloud & DevOps laboratory scenario with live environments, step-by-step challenges, and verification tests."}
           </p>
         </div>
@@ -1189,24 +1245,25 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {tags.slice(0, 4).map((t: string) => (
-                <span key={t} className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 rounded-md">
+                <span key={t} className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-white/60 text-amber-800 border border-amber-200/70 rounded-md">
                   {t}
                 </span>
               ))}
             </div>
           )}
 
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 pt-4 border-t border-slate-100 mt-1">
-            <span className="flex items-center gap-1.5 text-emerald-600">
+          <div className="flex items-center justify-between text-xs font-semibold text-amber-900/60 pt-4 border-t border-amber-200/60 mt-1">
+            <span className="flex items-center gap-1.5 text-emerald-700">
               <Clock className="w-4 h-4" />
               {duration}
             </span>
-            <span className="flex items-center gap-1.5 text-amber-600 group-hover:text-amber-700 transition-colors">
+            <span className="flex items-center gap-1.5 text-amber-700 group-hover:text-amber-800 transition-colors font-bold">
               <Terminal className="w-4 h-4" />
               Start Lab <ExternalLink className="w-3.5 h-3.5" />
             </span>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

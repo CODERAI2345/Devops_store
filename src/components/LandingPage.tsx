@@ -198,10 +198,6 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
             <a href="#domains" className="hover:text-fuchsia-400 transition-colors">
               Explore
             </a>
-            <a href="#architecture" className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-300 hover:bg-orange-500/20 hover:text-orange-200 transition">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-ping" />
-              AWS Architecture
-            </a>
             <a href="#resources" className="hover:text-fuchsia-400 transition-colors">
               Resources
             </a>
@@ -243,10 +239,6 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
           <div className="border-t border-white/10 bg-[#0d1128] px-6 py-6 md:hidden">
             <div className="flex flex-col gap-5 text-slate-100">
               <a href="#domains" onClick={() => setMobileMenu(false)}>Explore</a>
-              <a href="#architecture" onClick={() => setMobileMenu(false)} className="text-orange-300 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-orange-400" />
-                AWS Architecture (Live SVG)
-              </a>
               <a href="#resources" onClick={() => setMobileMenu(false)}>Resources</a>
               <a href="#learn" onClick={() => setMobileMenu(false)}>Learn & Grow</a>
               <a href="#about" onClick={() => setMobileMenu(false)}>About</a>
@@ -290,19 +282,19 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
             </StaggerItem>
 
             <StaggerItem className="mt-8 flex flex-wrap items-center gap-4">
-              <button
-                onClick={() => setView('feed')}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-fuchsia-500/25 transition hover:from-violet-500 hover:to-fuchsia-500"
-              >
-                Explore Hub <ArrowRight size={16} />
-              </button>
-              <a
-                href="#architecture"
-                className="flex items-center gap-2.5 rounded-xl border border-orange-500/40 bg-orange-500/10 px-5 py-3.5 text-sm font-semibold text-orange-200 hover:bg-orange-500/20 hover:border-orange-500/60 transition shadow-lg shadow-orange-500/10"
-              >
-                <AwsLogo className="w-6 h-4 shrink-0" />
-                <span>View AWS Architecture</span>
-              </a>
+              <div className="relative inline-flex group transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-fuchsia-500/40 rounded-xl">
+                {/* Outer animated spark wrapper */}
+                <div className="absolute inset-0 overflow-hidden rounded-xl">
+                  <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#1e1b4b_0%,#1e1b4b_50%,#e879f9_80%,#ffffff_100%)] opacity-90" />
+                </div>
+                {/* Inner Button */}
+                <button
+                  onClick={() => setView('feed')}
+                  className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:from-violet-800 hover:to-fuchsia-800"
+                >
+                  Explore Hub <ArrowRight size={16} className="text-fuchsia-300" />
+                </button>
+              </div>
             </StaggerItem>
 
             <StaggerItem>

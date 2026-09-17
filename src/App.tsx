@@ -2298,10 +2298,19 @@ function MainApp() {
               {(["yt", "ypl", "ys", "lp", "tw", "ig", "igp", "th", "blog", "email", "git", "web", "lab"] as ItemType[]).map((t) => (
                   <button
                       key={t}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${currentTab === t ? "bg-fuchsia-500/10 text-fuchsia-400 border border-orange-500/20" : "text-white/60 hover:text-white hover:bg-white/[0.03] border border-transparent"}`}
+                      className={`relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 overflow-hidden ${currentTab === t ? "text-fuchsia-400 shadow-[0_0_15px_rgba(232,121,249,0.15)]" : "text-white/60 hover:text-white hover:bg-white/[0.03] border border-transparent"}`}
                       onClick={() => setCurrentTab(t as ItemType)}
                   >
-                      <div className="flex items-center gap-3">
+                      {currentTab === t && (
+                        <>
+                          <div className="absolute inset-0 overflow-hidden rounded-xl z-0 pointer-events-none">
+                            <div className="absolute inset-[-100%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_50%,#e879f9_80%,#ffffff_100%)] opacity-70" />
+                          </div>
+                          <div className="absolute inset-[1px] rounded-[11px] bg-[#1a0b1e] z-0" />
+                        </>
+                      )}
+
+                      <div className="relative flex items-center gap-3 z-10">
                         {t === "yt" && <PlayCircle className="w-4 h-4" />}
                         {t === "ypl" && <PlayCircle className="w-4 h-4 text-red-400" />}
                         {t === "ys" && <PlayCircle className="w-4 h-4" />}
@@ -2319,33 +2328,11 @@ function MainApp() {
                         {t === "yt" ? "YouTube" : t === "ypl" ? "Playlists" : t === "ys" ? "Shorts" : t === "lp" ? "LinkedIn Posts" : t === "tw" ? "Twitter/X" : t === "ig" ? "Instagram Reels" : t === "igp" ? "Instagram Posts" : t === "th" ? "Threads" : t === "blog" ? "Blogs" : t === "email" ? "Emails" : t === "git" ? "GitHub" : t === "web" ? "Websites" : t === "lab" ? "Labs" : ""}
                       </div>
                       
-                      <div className={`px-2 py-0.5 rounded-full text-[10px] ${currentTab === t ? "bg-fuchsia-500/10 text-fuchsia-400" : "bg-white/[0.03] text-white/40"}`}>
+                      <div className={`relative px-2 py-0.5 rounded-full text-[10px] z-10 ${currentTab === t ? "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20" : "bg-white/[0.03] text-white/40 border border-transparent"}`}>
                           {db[t].length}
                       </div>
                   </button>
               ))}
-
-              <div className="pt-3 pb-1">
-                <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-2">Diagrams</div>
-                <button
-                  onClick={() => {
-                    setView("landing");
-                    setTimeout(() => {
-                      const el = document.getElementById("architecture");
-                      el?.scrollIntoView({ behavior: "smooth" });
-                    }, 150);
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20 border border-orange-500/30 group"
-                >
-                  <div className="flex items-center gap-3">
-                    <Cloud className="w-4 h-4 text-orange-400 group-hover:scale-110 transition-transform" />
-                    <span className="font-semibold">AWS Architecture</span>
-                  </div>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-300 font-mono">
-                    LIVE
-                  </span>
-                </button>
-              </div>
           </div>
       </div>
 

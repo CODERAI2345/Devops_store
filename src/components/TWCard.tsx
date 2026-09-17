@@ -8,10 +8,17 @@ export function TWCard({ item, onStar, onCopy, onClick, showToast }: any) {
 
   return (
     <div
-      className="group h-[500px] flex flex-col relative overflow-hidden rounded-xl bg-black border border-[#2f3336] hover:bg-[#080808] transition-colors cursor-pointer"
+      className="group h-[500px] relative rounded-xl bg-[#2f3336] hover:shadow-[0_8px_30px_rgba(29,155,240,0.15)] hover:-translate-y-1 transition-all duration-300 cursor-pointer"
       onClick={onClick}
     >
-      {/* Header */}
+      {/* Outer animated spark wrapper (shows through the 2px inner margin) */}
+      <div className="absolute inset-0 overflow-hidden rounded-xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_50%,#1d9bf0_80%,#ffffff_100%)]" />
+      </div>
+
+      {/* Inner Card Layer */}
+      <div className="relative m-[2px] rounded-[10px] bg-black hover:bg-[#080808] flex flex-col overflow-hidden z-10 h-[calc(100%-4px)] transition-colors">
+        {/* Header */}
       <div className="p-3 flex items-center justify-between shrink-0 bg-black">
         <div className="flex items-center gap-2">
           <div className="flex items-center justify-center shrink-0">
@@ -90,6 +97,7 @@ export function TWCard({ item, onStar, onCopy, onClick, showToast }: any) {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
