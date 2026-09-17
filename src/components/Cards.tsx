@@ -1066,19 +1066,6 @@ export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onC
         >
           <Star className="w-3.5 h-3.5" fill={item.starred ? "currentColor" : "none"} />
         </button>
-
-        {onDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className={`w-7 h-7 rounded-full ${theme.buttonBg} text-white/70 hover:text-rose-400 shadow-sm border border-white/10 flex items-center justify-center transition-all backdrop-blur-sm opacity-0 group-hover:opacity-100`}
-            title="Delete website"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
       </div>
 
       {/* Top Banner (Solid Color + Logo) */}
@@ -1120,7 +1107,7 @@ export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onC
             {item.title || domain}
           </h3>
           <p className="text-[13px] text-slate-400 line-clamp-2 leading-relaxed mb-4">
-            {item.description || "Curated documentation, architecture reference, or tool for your cloud & DevOps journey."}
+            {item.description}
           </p>
         </div>
 
@@ -1202,19 +1189,6 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
         >
           <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
         </button>
-
-        {onDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="w-8 h-8 rounded-full bg-white/90 text-slate-400 hover:text-rose-500 hover:bg-white shadow-sm border border-amber-100 flex items-center justify-center transition-all backdrop-blur-sm opacity-0 group-hover:opacity-100"
-            title="Delete Lab"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        )}
       </div>
 
       {/* Visual Cover / Terminal Preview Banner */}
@@ -1259,7 +1233,7 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
             {item.title || "Interactive Lab Course"}
           </h3>
           <p className="text-sm text-amber-900/70 line-clamp-2 leading-relaxed mb-4">
-            {item.description || "Hands-on cloud & DevOps laboratory scenario with live environments, step-by-step challenges, and verification tests."}
+            {item.description}
           </p>
         </div>
 
