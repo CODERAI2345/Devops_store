@@ -517,29 +517,42 @@ export const LPCard = React.memo(function LPCard({ item, onStar, onDelete, onCop
 export const BlogCard = React.memo(function BlogCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col"
+      className="group relative overflow-hidden rounded-2xl bg-transparent group-hover:bg-yellow-400/25 border border-white/[0.06] group-hover:border-yellow-400/40 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col shadow-none hover:shadow-none"
       onClick={onClick}
     >
-      {item.thumbnail && (
+      {/* Outer animated spark wrapper (shows through the 2px inner margin) - Yellow edge lighting */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl z-0 pointer-events-none hidden group-hover:block opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_50%,#ca8a04_70%,#eab308_85%,#fde047_100%)]" />
+      </div>
+
+      {/* Inner Card Layer */}
+      <div className="relative m-[2px] rounded-[14px] bg-[#0d1017] flex-1 flex flex-col overflow-hidden z-10 h-[calc(100%-4px)] shadow-none">
+        {item.thumbnail && (
           <div className="relative aspect-video w-full overflow-hidden bg-white/[0.03] border-b border-white/10">
-             <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy" src={item.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out" />
-             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent opacity-60" />
+            <img 
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  
+              loading="lazy" 
+              src={item.thumbnail} 
+              alt="" 
+              className="w-full h-full object-cover group-hover:scale-105 group-hover:opacity-85 transition-all duration-700 ease-out" 
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0d1017]/80 via-transparent to-transparent opacity-70" />
           </div>
-      )}
-      <div className="p-5 flex-1 flex flex-col">
+        )}
+        <div className="p-5 flex-1 flex flex-col">
           <div className="flex justify-between items-start mb-3">
-             <div className="flex items-center gap-2 text-[11px] font-medium tracking-wider text-white/40 uppercase">
-                <FileText className="w-3.5 h-3.5 text-fuchsia-400" /> Blog
-                {item.platform && (
-                    <>
-                        <span>•</span>
-                        {item.platform}
-                    </>
-                )}
-             </div>
-             
-             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-               <button
+            <div className="flex items-center gap-2 text-[11px] font-semibold tracking-wider text-yellow-400/90 uppercase">
+              <FileText className="w-3.5 h-3.5 text-yellow-400" /> Blog
+              {item.platform && (
+                <>
+                  <span className="text-white/30">•</span>
+                  <span className="text-white/60">{item.platform}</span>
+                </>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
                 className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-white/[0.05] ${item.starred ? "text-amber-400" : "text-white/40 hover:text-white"}`}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -558,17 +571,18 @@ export const BlogCard = React.memo(function BlogCard({ item, onStar, onDelete, o
                 <Copy className="w-3.5 h-3.5" />
               </button>
             </div>
-        </div>
+          </div>
 
-        <h3 className="text-base font-semibold text-white/90 leading-relaxed line-clamp-2 group-hover:text-white transition-colors mb-2">
+          <h3 className="text-base font-semibold text-white/95 leading-relaxed line-clamp-2 group-hover:text-yellow-300 transition-colors mb-2">
             {item.title || "Blog Post"}
-        </h3>
-        
-        {item.description && (
-            <p className="text-sm text-white/50 line-clamp-3 leading-relaxed font-light mt-auto pt-2">
-                {item.description}
+          </h3>
+          
+          {item.description && (
+            <p className="text-sm text-white/60 line-clamp-3 leading-relaxed font-light mt-auto pt-2">
+              {item.description}
             </p>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -953,7 +967,7 @@ export const THCard = React.memo(function THCard({ item, onStar, onDelete, onCop
 
 
 
-export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onClick }: CardProps) {
+export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
   let domain = "website.com";
   try {
     domain = new URL(item.url).hostname.replace(/^www\./i, "");
@@ -962,172 +976,140 @@ export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onC
   const favicon = item.favicon || `https://s2.googleusercontent.com/s2/favicons?domain=${domain}&sz=128`;
   const platform = (item as any).platform || domain;
   const tags: string[] = Array.isArray((item as any).tags) ? (item as any).tags : [];
+  const [imgFailed, setImgFailed] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
 
-  const colorSchemes = [
-    { 
-      banner: "bg-teal-600", 
-      cardBg: "bg-[#041111]", 
-      border: "border-teal-900/40", 
-      wrapperBg: "bg-teal-900/20",
-      hoverShadow: "hover:shadow-[0_8px_30px_rgba(13,148,136,0.2)]",
-      tagBg: "bg-teal-500/10", 
-      tagText: "text-teal-400", 
-      tagBorder: "border-teal-500/20",
-      link: "text-teal-400",
-      buttonBg: "bg-[#041111]/80 hover:bg-teal-500/30",
-    },
-    { 
-      banner: "bg-indigo-600", 
-      cardBg: "bg-[#090916]", 
-      border: "border-indigo-900/40", 
-      wrapperBg: "bg-indigo-900/20",
-      hoverShadow: "hover:shadow-[0_8px_30px_rgba(79,70,229,0.2)]", 
-      tagBg: "bg-indigo-500/10", 
-      tagText: "text-indigo-400", 
-      tagBorder: "border-indigo-500/20",
-      link: "text-indigo-400",
-      buttonBg: "bg-[#090916]/80 hover:bg-indigo-500/30",
-    },
-    { 
-      banner: "bg-rose-600", 
-      cardBg: "bg-[#160408]", 
-      border: "border-rose-900/40", 
-      wrapperBg: "bg-rose-900/20",
-      hoverShadow: "hover:shadow-[0_8px_30px_rgba(225,29,72,0.2)]", 
-      tagBg: "bg-rose-500/10", 
-      tagText: "text-rose-400", 
-      tagBorder: "border-rose-500/20",
-      link: "text-rose-400",
-      buttonBg: "bg-[#160408]/80 hover:bg-rose-500/30",
-    },
-    { 
-      banner: "bg-amber-600", 
-      cardBg: "bg-[#160f04]", 
-      border: "border-amber-900/40", 
-      wrapperBg: "bg-amber-900/20",
-      hoverShadow: "hover:shadow-[0_8px_30px_rgba(217,119,6,0.2)]", 
-      tagBg: "bg-amber-500/10", 
-      tagText: "text-amber-400", 
-      tagBorder: "border-amber-500/20",
-      link: "text-amber-400",
-      buttonBg: "bg-[#160f04]/80 hover:bg-amber-500/30",
-    },
-    { 
-      banner: "bg-blue-700", 
-      cardBg: "bg-[#040b16]", 
-      border: "border-blue-900/40", 
-      wrapperBg: "bg-blue-900/20",
-      hoverShadow: "hover:shadow-[0_8px_30px_rgba(29,78,216,0.2)]", 
-      tagBg: "bg-blue-500/10", 
-      tagText: "text-blue-400", 
-      tagBorder: "border-blue-500/20",
-      link: "text-blue-400",
-      buttonBg: "bg-[#040b16]/80 hover:bg-blue-500/30",
-    },
-    { 
-      banner: "bg-emerald-600", 
-      cardBg: "bg-[#04140a]", 
-      border: "border-emerald-900/40", 
-      wrapperBg: "bg-emerald-900/20",
-      hoverShadow: "hover:shadow-[0_8px_30px_rgba(5,150,105,0.2)]", 
-      tagBg: "bg-emerald-500/10", 
-      tagText: "text-emerald-400", 
-      tagBorder: "border-emerald-500/20",
-      link: "text-emerald-400",
-      buttonBg: "bg-[#04140a]/80 hover:bg-emerald-500/30",
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (item.url) {
+      navigator.clipboard.writeText(item.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      if (onCopy) onCopy();
     }
-  ];
+  };
 
-  const colorIndex = Array.from(domain).reduce((acc, char) => acc + char.charCodeAt(0), 0) % colorSchemes.length;
-  const theme = colorSchemes[colorIndex];
+  const handleDirectVisit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (item.url) {
+      window.open(item.url, "_blank", "noopener,noreferrer");
+    }
+  };
 
   return (
     <div 
       key={item.id}
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl ${theme.wrapperBg} ${theme.hoverShadow} hover:-translate-y-1 transition-all duration-300 cursor-pointer`}
+      className="group relative overflow-hidden rounded-2xl bg-transparent group-hover:bg-[#dc143c]/20 hover:shadow-[0_12px_36px_rgba(220,20,60,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer"
     >
-      {/* Outer animated spark wrapper (shows through the 1.5px inner margin) */}
-      <div className="absolute inset-0 overflow-hidden rounded-2xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_50%,#f4a460_80%,#ffffff_100%)]" />
+      {/* Outer animated spark wrapper (shows through the 2px inner margin) - Crimson edge lighting */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl z-0 pointer-events-none hidden group-hover:block opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_50%,#9f1239_70%,#dc143c_85%,#fb7185_100%)]" />
       </div>
 
-      {/* Inner Card Layer */}
-      <div className={`relative m-[2px] rounded-[14px] ${theme.cardBg} flex flex-col justify-between overflow-hidden z-10 h-[calc(100%-4px)]`}>
-        {/* Top action buttons (Only Star & Delete) */}
-      <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onStar();
-          }}
-          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${item.starred ? "bg-white text-amber-500 shadow-md" : `${theme.buttonBg} text-white/70 shadow-sm border border-white/10`}`}
-          title="Star website"
-        >
-          <Star className="w-3.5 h-3.5" fill={item.starred ? "currentColor" : "none"} />
-        </button>
-      </div>
+      {/* Inner Card Layer - Snow #FFFAFA with Black Text */}
+      <div className="relative m-[2px] rounded-[14px] bg-[#FFFAFA] border border-black/5 flex flex-col justify-between overflow-hidden z-10 h-[calc(100%-4px)] shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
+        {/* Top action buttons */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
+          <button
+            onClick={handleCopy}
+            className={`w-7 h-7 rounded-full flex items-center justify-center transition-all backdrop-blur-md ${copied ? "bg-emerald-600 text-white" : "bg-white/90 text-black hover:bg-white"} shadow-sm border border-black/10`}
+            title={copied ? "Link Copied!" : "Copy website link"}
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
 
-      {/* Top Banner (Solid Color + Logo) */}
-      <div className={`w-full h-36 ${theme.banner} relative flex flex-col items-center justify-center p-4`}>
-        {item.thumbnail && (
-          <img 
-            src={item.thumbnail} 
-            alt={item.title || "Website preview"} 
-            className="w-full h-full absolute inset-0 object-cover pointer-events-none"
-          />
-        )}
-        
-        {!item.thumbnail && (
-          <div className="flex flex-col items-center gap-3 z-10">
-            <img 
-              loading="lazy" 
-              src={favicon} 
-              alt={domain} 
-              className="w-12 h-12 rounded-xl object-contain bg-white/20 p-2 backdrop-blur-md shadow-lg" 
-              onError={(e) => { 
-                e.currentTarget.style.display = 'none'; 
-                const next = e.currentTarget.nextElementSibling;
-                if (next) next.classList.remove('hidden'); 
-              }} 
-            />
-            <Globe2 className="w-8 h-8 text-white/80 hidden drop-shadow-md" />
-            
-            <h3 className="font-bold text-white text-xl tracking-wide drop-shadow-md text-center line-clamp-1 px-4">
-              {platform}
-            </h3>
-          </div>
-        )}
-      </div>
+          <button
+            onClick={handleDirectVisit}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all backdrop-blur-md bg-white/90 text-black hover:bg-white shadow-sm border border-black/10"
+            title="Open website in new tab"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </button>
 
-      {/* Body description & tags */}
-      <div className="p-5 flex-1 flex flex-col justify-between">
-        <div>
-          <h3 className="font-bold text-white text-lg leading-tight line-clamp-1 mb-1.5 group-hover:text-white/90 transition-colors">
-            {item.title || domain}
-          </h3>
-          <p className="text-[13px] text-slate-400 line-clamp-2 leading-relaxed mb-4">
-            {item.description}
-          </p>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onStar();
+            }}
+            className={`w-7 h-7 rounded-full flex items-center justify-center transition-all backdrop-blur-md ${item.starred ? "bg-amber-500 text-white shadow-md" : "bg-white/90 text-amber-500/70 hover:text-amber-500 hover:bg-white shadow-sm border border-black/10"}`}
+            title="Star website"
+          >
+            <Star className="w-3.5 h-3.5" fill={item.starred ? "currentColor" : "none"} />
+          </button>
         </div>
 
-        <div className="flex flex-col gap-3 mt-auto">
-          <div className="flex items-center gap-2 text-[13px] font-medium">
-            <LinkIcon className={`w-3.5 h-3.5 ${theme.link}`} />
-            <span className={`${theme.link} truncate`}>{domain}</span>
-          </div>
-
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/5 mt-1">
-              {tags.slice(0, 4).map((t: string) => (
-                <span key={t} className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${theme.tagBg} ${theme.tagText} border ${theme.tagBorder} rounded-md`}>
-                  {t}
-                </span>
-              ))}
+        {/* Top Banner */}
+        <div className="w-full h-36 bg-gradient-to-br from-[#f2ecec] via-[#FFFAFA] to-[#ebe3e3] border-b border-black/5 relative flex flex-col items-center justify-center p-4 overflow-hidden">
+          {item.thumbnail && !imgFailed && (
+            <img 
+              src={item.thumbnail} 
+              alt={item.title || "Website preview"} 
+              onError={() => setImgFailed(true)}
+              className="w-full h-full absolute inset-0 object-cover group-hover:scale-105 transition-transform duration-500 ease-out pointer-events-none"
+            />
+          )}
+          
+          {(!item.thumbnail || imgFailed) && (
+            <div className="flex flex-col items-center gap-2.5 z-10">
+              <img 
+                loading="lazy" 
+                src={favicon} 
+                alt={domain} 
+                className="w-12 h-12 rounded-xl object-contain bg-white p-2 shadow-sm border border-black/10" 
+                onError={(e) => { 
+                  e.currentTarget.style.display = 'none'; 
+                  const next = e.currentTarget.nextElementSibling;
+                  if (next) next.classList.remove('hidden'); 
+                }} 
+              />
+              <Globe2 className="w-8 h-8 text-black/80 hidden drop-shadow-sm" />
+              
+              <h3 className="font-bold text-black text-xl tracking-tight text-center line-clamp-1 px-4">
+                {platform}
+              </h3>
             </div>
           )}
         </div>
-      </div>
+
+        {/* Body description & tags */}
+        <div className="p-5 flex-1 flex flex-col justify-between bg-[#FFFAFA]">
+          <div>
+            <h3 className="font-bold text-black text-lg leading-tight line-clamp-1 mb-2 group-hover:text-[#dc143c] transition-colors">
+              {item.title || domain}
+            </h3>
+            <p className="text-[13px] text-black/80 line-clamp-2 leading-relaxed mb-4 font-normal">
+              {item.description}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 mt-auto">
+            <div 
+              onClick={handleDirectVisit}
+              className="flex items-center gap-2 text-[13px] font-semibold text-black hover:text-[#dc143c] transition-colors w-fit cursor-pointer group/link"
+              title="Open website directly"
+            >
+              <LinkIcon className="w-3.5 h-3.5 text-black/70 group-hover/link:text-[#dc143c]" />
+              <span className="truncate group-hover/link:underline">{domain}</span>
+              <ExternalLink className="w-3 h-3 text-black/50 group-hover/link:text-[#dc143c]" />
+            </div>
+
+            {tags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-black/10 mt-1">
+                {tags.slice(0, 3).map((t: string) => (
+                  <span key={t} className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-black/[0.05] text-black border border-black/10 rounded-md">
+                    {t}
+                  </span>
+                ))}
+                {tags.length > 3 && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-semibold text-black/60 bg-black/[0.04] border border-black/10 rounded-md">
+                    +{tags.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1168,98 +1150,104 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
     <div 
       key={item.id}
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl bg-amber-200/70 hover:shadow-[0_8px_30px_rgba(245,158,11,0.18)] hover:-translate-y-1 transition-all duration-300 cursor-pointer`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`group relative overflow-hidden rounded-2xl transition-all duration-300 cursor-pointer shadow-none hover:shadow-none hover:-translate-y-1 p-[4px] flex flex-col ${
+        isHovered ? "bg-[#006400]/40 border border-[#006400]/60" : "bg-[#FFFAFA] border border-black/5"
+      }`}
     >
-      {/* Outer animated spark wrapper (shows through the 2px inner margin) */}
-      <div className="absolute inset-0 overflow-hidden rounded-2xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_50%,#ff00ff_80%,#ffffff_100%)]" />
-      </div>
+      {/* Outer animated spark wrapper (expanded 4px edge lighting track) - DarkGreen. Completely hidden when not hovered */}
+      {isHovered && (
+        <div className="absolute inset-0 overflow-hidden rounded-2xl z-0 pointer-events-none">
+          <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_40%,#003800_55%,#006400_70%,#16a34a_85%,#4ade80_100%)]" />
+        </div>
+      )}
 
-      {/* Inner Card Layer */}
-      <div className={`relative m-[2px] rounded-[14px] bg-amber-50/95 flex flex-col justify-between overflow-hidden z-10 h-[calc(100%-4px)]`}>
+      {/* Inner Card Layer - Snow #FFFAFA with Black Text */}
+      <div className="relative rounded-[12px] bg-[#FFFAFA] border border-black/5 flex-1 flex flex-col justify-between overflow-hidden z-10 shadow-none">
         {/* Top action buttons (Only Star & Delete) */}
-      <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onStar();
-          }}
-          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${item.starred ? "bg-amber-500 text-white shadow-md border border-amber-600" : "bg-white/90 text-amber-300 hover:text-amber-600 hover:bg-white shadow-sm border border-amber-100"}`}
-          title="Star Lab"
-        >
-          <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
-        </button>
-      </div>
-
-      {/* Visual Cover / Terminal Preview Banner */}
-      <div className="w-full aspect-video bg-gradient-to-br from-amber-100 to-orange-50 relative border-b border-amber-200/70 flex items-center justify-center overflow-hidden">
-        {item.thumbnail ? (
-          <img 
-            onError={(e) => { 
-              e.currentTarget.style.display = 'none'; 
-              const placeholder = e.currentTarget.parentElement?.querySelector('.lab-cover-fallback') as HTMLElement;
-              if (placeholder) placeholder.style.display = 'flex';
-            }}  
-            loading="lazy" 
-            src={item.thumbnail} 
-            alt={item.title || "Lab thumbnail"}
-            className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" 
-          />
-        ) : null}
-
-        <div className={`lab-cover-fallback absolute inset-0 flex flex-col items-center justify-center p-6 text-center ${item.thumbnail ? 'hidden' : 'flex'}`}>
-          <div className="w-14 h-14 rounded-2xl bg-white border border-amber-200 flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
-            <Terminal className="w-7 h-7 text-amber-600" />
-          </div>
-          <span className="text-xs font-bold text-amber-900 tracking-wide uppercase">{platformName}</span>
-          <span className="text-[11px] text-amber-700/70 mt-1">Interactive Hands-on Lab</span>
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onStar();
+            }}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${item.starred ? "bg-amber-500 text-white border border-amber-600" : "bg-white/90 text-amber-500/70 hover:text-amber-500 hover:bg-white border border-black/10"}`}
+            title="Star Lab"
+          >
+            <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
+          </button>
         </div>
 
-        {/* Floating difficulty badge */}
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border shadow-sm ${difficultyClass}`}>
-            {difficultyLabel}
-          </span>
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/90 border border-amber-200 text-amber-900 shadow-sm backdrop-blur-sm">
-            {platformName}
-          </span>
-        </div>
-      </div>
+        {/* Visual Cover / Terminal Preview Banner */}
+        <div className="w-full aspect-video bg-gradient-to-br from-[#f2ecec] via-[#FFFAFA] to-[#ebe3e3] relative border-b border-black/5 flex items-center justify-center overflow-hidden">
+          {item.thumbnail ? (
+            <img 
+              onError={(e) => { 
+                e.currentTarget.style.display = 'none'; 
+                const placeholder = e.currentTarget.parentElement?.querySelector('.lab-cover-fallback') as HTMLElement;
+                if (placeholder) placeholder.style.display = 'flex';
+              }}  
+              loading="lazy" 
+              src={item.thumbnail} 
+              alt={item.title || "Lab thumbnail"}
+              className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" 
+            />
+          ) : null}
 
-      {/* Body details */}
-      <div className="p-5 flex-1 flex flex-col justify-between bg-transparent">
-        <div>
-          <h3 className="font-extrabold text-amber-950 text-lg leading-tight line-clamp-2 mb-2 group-hover:text-amber-700 transition-colors">
-            {item.title || "Interactive Lab Course"}
-          </h3>
-          <p className="text-sm text-amber-900/70 line-clamp-2 leading-relaxed mb-4">
-            {item.description}
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3 mt-auto">
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {tags.slice(0, 4).map((t: string) => (
-                <span key={t} className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-white/60 text-amber-800 border border-amber-200/70 rounded-md">
-                  {t}
-                </span>
-              ))}
+          <div className={`lab-cover-fallback absolute inset-0 flex flex-col items-center justify-center p-6 text-center ${item.thumbnail ? 'hidden' : 'flex'}`}>
+            <div className="w-14 h-14 rounded-2xl bg-white border border-black/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <Terminal className="w-7 h-7 text-[#006400]" />
             </div>
-          )}
+            <span className="text-xs font-bold text-black tracking-wide uppercase">{platformName}</span>
+            <span className="text-[11px] text-black/60 mt-1">Interactive Hands-on Lab</span>
+          </div>
 
-          <div className="flex items-center justify-between text-xs font-semibold text-amber-900/60 pt-4 border-t border-amber-200/60 mt-1">
-            <span className="flex items-center gap-1.5 text-emerald-700">
-              <Clock className="w-4 h-4" />
-              {duration}
+          {/* Floating difficulty badge */}
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${difficultyClass}`}>
+              {difficultyLabel}
             </span>
-            <span className="flex items-center gap-1.5 text-amber-700 group-hover:text-amber-800 transition-colors font-bold">
-              <Terminal className="w-4 h-4" />
-              Start Lab <ExternalLink className="w-3.5 h-3.5" />
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/90 border border-black/10 text-black backdrop-blur-sm">
+              {platformName}
             </span>
           </div>
         </div>
-      </div>
+
+        {/* Body details */}
+        <div className="p-5 flex-1 flex flex-col justify-between bg-[#FFFAFA]">
+          <div>
+            <h3 className="font-extrabold text-black text-lg leading-tight line-clamp-2 mb-2 group-hover:text-[#006400] transition-colors">
+              {item.title || "Interactive Lab Course"}
+            </h3>
+            <p className="text-sm text-black/80 line-clamp-2 leading-relaxed mb-4">
+              {item.description}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 mt-auto">
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {tags.slice(0, 4).map((t: string) => (
+                  <span key={t} className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-black/[0.05] text-black border border-black/10 rounded-md">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-xs font-semibold text-black/60 pt-4 border-t border-black/10 mt-1">
+              <span className="flex items-center gap-1.5 text-emerald-700">
+                <Clock className="w-4 h-4" />
+                {duration}
+              </span>
+              <span className="flex items-center gap-1.5 text-black group-hover:text-[#006400] transition-colors font-bold">
+                <Terminal className="w-4 h-4 text-[#006400]" />
+                Start Lab <ExternalLink className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -8,7 +8,22 @@ declare global {
   }
 }
 import React, { useState, useEffect } from "react";
-import { X, Clock, Link as LinkIcon, Edit2, Save, Upload, Terminal, Globe2 } from "lucide-react";
+import { 
+  X, 
+  Clock, 
+  Link as LinkIcon, 
+  Edit2, 
+  Save, 
+  Upload, 
+  Terminal, 
+  Globe2,
+  ExternalLink,
+  Sparkles,
+  Check,
+  Info,
+  Compass,
+  ArrowRight,
+} from "lucide-react";
 import { HubItem } from "../types";
 import { shortenUrl, ytId, ytPlaylistId } from "../utils";
 import { ThreadsMediaCarousel, extractThreadsMedia } from "./ThreadsMediaCarousel";
@@ -190,7 +205,7 @@ export function Modal({
     ig: "Open on Instagram",
     git: "View on GitHub",
     lab: "Launch Lab Environment",
-    web: "Visit Website",
+    web: (item as any).platform ? `Launch ${(item as any).platform}` : "Visit Website",
   }[item.type] || "Open Link";
 
   const handlePrimaryClick = async () => {
@@ -324,7 +339,7 @@ export function Modal({
                   <Globe2 className="w-8 h-8 text-blue-400" />
                 </div>
                 <span className="text-sm font-semibold text-blue-400 uppercase tracking-wider">{(item as any).platform || (item as any).domain || "Web Resource"}</span>
-                <span className="text-xs text-white/50 mt-1">Curated Documentation & DevOps Tools</span>
+                <span className="text-xs text-white/50 mt-1">{(item as any).domain ? `Official Resource • ${(item as any).domain}` : "Interactive Web Platform"}</span>
               </div>
             ) : null}
           </div>
@@ -616,10 +631,73 @@ export function Modal({
                   {name}
                 </h1>
                 
-                {item.description && (
-                  <div className="text-sm text-white/70 leading-relaxed mb-6 whitespace-pre-wrap font-light bg-white/[0.03] p-5 rounded-2xl border border-white/10">
-                    {item.description}
+                {item.type === "web" ? (
+                  <div className="flex flex-col gap-5 mb-6">
+                    {/* Platform Identity & Direct Link Header Banner */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-blue-500/[0.08] border border-blue-500/20">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0 shadow-inner">
+                          <Globe2 className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>Verified Resource</span>
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                          </div>
+                          <div className="text-sm font-semibold text-white truncate">
+                            {(item as any).platform || (item as any).domain || "Web Resource"}
+                          </div>
+                        </div>
+                      </div>
+                      {item.url && (
+                        <button
+                          onClick={handlePrimaryClick}
+                          className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20 hover:scale-[1.02] shrink-0"
+                        >
+                          Visit Site <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* "What is this website & What does it do?" Gunshot Overview Card */}
+                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col gap-3">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-400">
+                        <Info className="w-4 h-4 text-blue-400" />
+                        <span>About this Platform</span>
+                      </div>
+                      <p className="text-sm text-white/90 leading-relaxed font-normal whitespace-pre-wrap">
+                        {item.description || (
+                          <>
+                            <strong className="text-white font-semibold">{(item as any).platform || name}</strong> is an interactive web platform and curated resource for developers, engineers, and learners.
+                          </>
+                        )}
+                      </p>
+                    </div>
+
+                    {/* Key Highlights / Why Use It */}
+                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-2.5">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-white/50 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Key Highlights & Value</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-1">
+                        <div className="flex items-start gap-2.5 text-xs text-white/80 bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                          <span>Direct interactive practice & real-world documentation</span>
+                        </div>
+                        <div className="flex items-start gap-2.5 text-xs text-white/80 bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                          <span>Curated for speed, practical utility, and career growth</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                ) : (
+                  item.description && (
+                    <div className="text-sm text-white/70 leading-relaxed mb-6 whitespace-pre-wrap font-light bg-white/[0.03] p-5 rounded-2xl border border-white/10">
+                      {item.description}
+                    </div>
+                  )
                 )}
 
                 <div className="flex gap-2 flex-wrap">
