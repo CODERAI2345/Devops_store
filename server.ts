@@ -8,11 +8,40 @@ async function startServer() {
 
   app.use(express.json({ limit: "50mb" }));
 
+  // In-memory LRU cache for scraped metadata (15 minutes TTL)
+  const metaCache = new Map<string, { data: any; expiresAt: number }>();
+  const CACHE_TTL_MS = 15 * 60 * 1000;
+  const MAX_CACHE_ITEMS = 300;
+
+  const getCached = (key: string) => {
+    const entry = metaCache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      metaCache.delete(key);
+      return null;
+    }
+    return entry.data;
+  };
+
+  const setCached = (key: string, data: any) => {
+    if (metaCache.size >= MAX_CACHE_ITEMS) {
+      const oldestKey = metaCache.keys().next().value;
+      if (oldestKey) metaCache.delete(oldestKey);
+    }
+    metaCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+  };
+
   // Threads metadata extraction endpoint
   app.get("/api/threads-meta", async (req, res) => {
     const rawUrl = req.query.url as string;
     if (!rawUrl) {
       return res.status(400).json({ error: "url query parameter is required" });
+    }
+
+    const cacheKey = `th:${rawUrl.trim().toLowerCase()}`;
+    const cachedData = getCached(cacheKey);
+    if (cachedData) {
+      return res.json({ success: true, data: cachedData, cached: true });
     }
 
     try {
@@ -115,18 +144,22 @@ async function startServer() {
 
       const thumbnail = images.length > 0 ? images[0] : (image || "");
 
+      const resultData = {
+        title: title || "Threads Post",
+        description: description || "",
+        thumbnail,
+        images,
+        media,
+        shortcode,
+        author,
+        canonicalUrl: ogUrl || targetUrl,
+      };
+
+      setCached(cacheKey, resultData);
+
       return res.json({
         success: true,
-        data: {
-          title: title || "Threads Post",
-          description: description || "",
-          thumbnail,
-          images,
-          media,
-          shortcode,
-          author,
-          canonicalUrl: ogUrl || targetUrl,
-        },
+        data: resultData,
       });
     } catch (err: any) {
       console.error("Threads meta fetch error:", err);
@@ -140,6 +173,12 @@ async function startServer() {
     const requestedType = req.query.type as string; // "lab" | "web" | undefined
     if (!rawUrl) {
       return res.status(400).json({ error: "url query parameter is required" });
+    }
+
+    const cacheKey = `scrape:${(requestedType || 'all')}:${rawUrl.trim().toLowerCase()}`;
+    const cachedData = getCached(cacheKey);
+    if (cachedData) {
+      return res.json({ success: true, data: cachedData, cached: true });
     }
 
     try {
@@ -309,21 +348,25 @@ async function startServer() {
         } catch (e) {}
       }
 
+      const scrapedResult = {
+        title,
+        description,
+        thumbnail: image || "",
+        favicon,
+        platform,
+        domain,
+        author: author || "",
+        tags: detectedTags.slice(0, 6),
+        difficulty,
+        duration,
+        canonicalUrl: finalUrl,
+      };
+
+      setCached(cacheKey, scrapedResult);
+
       return res.json({
         success: true,
-        data: {
-          title,
-          description,
-          thumbnail: image || "",
-          favicon,
-          platform,
-          domain,
-          author: author || "",
-          tags: detectedTags.slice(0, 6),
-          difficulty,
-          duration,
-          canonicalUrl: finalUrl,
-        },
+        data: scrapedResult,
       });
     } catch (err: any) {
       console.error("Scrape meta fetch error:", err);

@@ -4,7 +4,7 @@ import { PipelineAnimation } from "./components/PipelineAnimation";
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
+import React, { useState, useEffect, useRef, Suspense, lazy, useCallback } from "react";
 import {
   Search,
   Check,
@@ -46,7 +46,6 @@ import { useCentralHub } from "./hooks/useCentralHub";
 import { ItemType, HubItem } from "./types";
 // Removed gemini import
 import { parseSlug, classifyUrl, isThreadsUrl, ytId, ytPlaylistId, extractEmailDetails, guessCategoryFromUrl, extractTopicFromLinkedInUrl, extractLinkedInAuthor, extractTwitterUsername, extractInstagramShortcode, extractThreadsShortcode, extractThreadsAuthor } from "./utils";
-import * as XLSX from "xlsx";
 import { logAnalyticsEvent } from "./analytics";
 
 const JOB_ROLES = [
@@ -69,6 +68,66 @@ const JOB_ROLES = [
 
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 const LandingPage = lazy(() => import('./components/LandingPage'));
+
+interface FeedCardItemProps {
+  item: any;
+  tab: ItemType;
+  onStar: (tab: ItemType, id: number | string) => void;
+  onDelete: (tab: ItemType, id: number | string) => void;
+  onCopy: (tab: ItemType, item: any) => void;
+  onClick: (item: any) => void;
+  onEnrich?: (tab: ItemType, id: number | string) => void;
+  showToast: (msg: string, err?: boolean) => void;
+}
+
+const FeedCardItem = React.memo(function FeedCardItem({
+  item,
+  tab,
+  onStar,
+  onDelete,
+  onCopy,
+  onClick,
+  onEnrich,
+  showToast,
+}: FeedCardItemProps) {
+  const handleStar = useCallback(() => onStar(tab, item.id), [onStar, tab, item.id]);
+  const handleDelete = useCallback(() => onDelete(tab, item.id), [onDelete, tab, item.id]);
+  const handleCopy = useCallback(() => onCopy(tab, item), [onCopy, tab, item]);
+  const handleClick = useCallback(() => onClick(item), [onClick, item]);
+  const handleEnrich = onEnrich ? useCallback(() => onEnrich(tab, item.id), [onEnrich, tab, item.id]) : undefined;
+
+  switch (tab) {
+    case "yt":
+      return <YTCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+    case "ypl":
+      return <YPLCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+    case "ys":
+      return <YSCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+    case "lp":
+      return <LPCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+    case "li":
+      return <LICard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+    case "blog":
+      return <BlogCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+    case "email":
+      return <EmailCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+    case "tw":
+      return <TWCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} showToast={showToast} />;
+    case "th":
+      return <THCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+    case "ig":
+    case "igp":
+      return <IGCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+    case "git":
+      return <GitCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+    case "web":
+      return <WebCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+    case "lab":
+      return <LabCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+    default:
+      return <LPCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+  }
+});
 
 function MainApp() {
   const navigate = useNavigate();
@@ -105,6 +164,7 @@ function MainApp() {
   const [linkInput, setLinkInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [adminTab, setAdminTab] = useState<ItemType | "analytics">("analytics");
+  const [adminSearchQuery, setAdminSearchQuery] = useState("");
   const [manualProfile, setManualProfile] = useState({ image: "", url: "" });
   const [manualScreenshot, setManualScreenshot] = useState({
     image: "",
@@ -179,7 +239,7 @@ function MainApp() {
     showToast("Logged out");
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const allData = [
       ...db.yt.map((item) => ({ Category: "YouTube", ...item })),
       ...db.ys.map((item) => ({ Category: "Shorts", ...item })),
@@ -194,11 +254,17 @@ function MainApp() {
       return;
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(allData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
-    XLSX.writeFile(workbook, "CentralHub_Export.xlsx");
-    showToast("Data exported successfully!");
+    try {
+      const XLSX = await import("xlsx");
+      const worksheet = XLSX.utils.json_to_sheet(allData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+      XLSX.writeFile(workbook, "CentralHub_Export.xlsx");
+      showToast("Data exported successfully!");
+    } catch (err) {
+      console.error("Export failed", err);
+      showToast("Export failed", true);
+    }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -994,6 +1060,50 @@ function MainApp() {
       showToast("Enrichment is disabled", true);
   };
 
+  const deferredSearchQuery = React.useDeferredValue(searchQuery);
+
+  const handleStarItem = useCallback(
+    (tab: ItemType, id: number | string) => {
+      toggleStar(tab, id);
+    },
+    [toggleStar]
+  );
+
+  const handleDeleteItem = useCallback(
+    (tab: ItemType, id: number | string) => {
+      deleteItem(tab, id);
+    },
+    [deleteItem]
+  );
+
+  const handleCopyItem = useCallback(
+    (tab: ItemType, item: any) => {
+      if (tab === "li" && item.title && item.title !== "LinkedIn Member" && !item.title.startsWith("http")) {
+        let copyText = item.title;
+        if (item.company) {
+          copyText += ` - ${item.company}`;
+        }
+        navigator.clipboard.writeText(copyText);
+        showToast("Profile details copied!");
+        return;
+      }
+      navigator.clipboard.writeText(item.url || "");
+      showToast("Link copied!");
+    },
+    [showToast]
+  );
+
+  const handleSelectItem = useCallback((item: any) => {
+    setSelectedItem(item);
+  }, []);
+
+  const handleEnrichItem = useCallback(
+    (tab: ItemType, id: number | string) => {
+      handleEnrich(tab, id);
+    },
+    []
+  );
+
   const renderFeed = (tabToRender: ItemType) => {
     if (isInitialLoading) {
       return (
@@ -1004,33 +1114,36 @@ function MainApp() {
       );
     }
 
-    const q = searchQuery.toLowerCase();
-    let items = db[tabToRender];
+    const q = deferredSearchQuery.toLowerCase().trim();
+    let items = db[tabToRender] || [];
 
     if (showStarredOnly) {
       items = items.filter((x) => x.starred) as any;
     }
 
     if (tabToRender === "lp" && selectedLPTag) {
-      items = items.filter((x: any) => x.heading?.toLowerCase().includes(selectedLPTag.toLowerCase()) || x.title?.toLowerCase().includes(selectedLPTag.toLowerCase())) as any;
+      const tagLower = selectedLPTag.toLowerCase();
+      items = items.filter((x: any) => x.heading?.toLowerCase().includes(tagLower) || x.title?.toLowerCase().includes(tagLower)) as any;
     }
 
     if (tabToRender === "lab" && selectedLabTag) {
+      const tagLower = selectedLabTag.toLowerCase();
       items = items.filter((x: any) => {
-        const tagMatch = Array.isArray(x.tags) && x.tags.some((t: string) => t.toLowerCase() === selectedLabTag.toLowerCase());
-        const platMatch = x.platform?.toLowerCase().includes(selectedLabTag.toLowerCase());
-        const diffMatch = x.difficulty?.toLowerCase().includes(selectedLabTag.toLowerCase());
-        const titleMatch = x.title?.toLowerCase().includes(selectedLabTag.toLowerCase());
+        const tagMatch = Array.isArray(x.tags) && x.tags.some((t: string) => t.toLowerCase() === tagLower);
+        const platMatch = x.platform?.toLowerCase().includes(tagLower);
+        const diffMatch = x.difficulty?.toLowerCase().includes(tagLower);
+        const titleMatch = x.title?.toLowerCase().includes(tagLower);
         return tagMatch || platMatch || diffMatch || titleMatch;
       }) as any;
     }
 
     if (tabToRender === "web" && selectedWebTag) {
+      const tagLower = selectedWebTag.toLowerCase();
       items = items.filter((x: any) => {
-        const tagMatch = Array.isArray(x.tags) && x.tags.some((t: string) => t.toLowerCase() === selectedWebTag.toLowerCase());
-        const platMatch = x.platform?.toLowerCase().includes(selectedWebTag.toLowerCase());
-        const titleMatch = x.title?.toLowerCase().includes(selectedWebTag.toLowerCase());
-        const domainMatch = x.domain?.toLowerCase().includes(selectedWebTag.toLowerCase());
+        const tagMatch = Array.isArray(x.tags) && x.tags.some((t: string) => t.toLowerCase() === tagLower);
+        const platMatch = x.platform?.toLowerCase().includes(tagLower);
+        const titleMatch = x.title?.toLowerCase().includes(tagLower);
+        const domainMatch = x.domain?.toLowerCase().includes(tagLower);
         return tagMatch || platMatch || titleMatch || domainMatch;
       }) as any;
     }
@@ -1101,194 +1214,19 @@ function MainApp() {
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
-        {items.map((item: any) => {
-          const props = {
-            item,
-            onStar: () => toggleStar(tabToRender, item.id),
-            onDelete: () => deleteItem(tabToRender, item.id),
-            onCopy: () => {
-              if (tabToRender === "li" && item.title && item.title !== "LinkedIn Member" && !item.title.startsWith("http")) {
-                let copyText = item.title;
-                if (item.company) {
-                  copyText += ` - ${item.company}`;
-                }
-                navigator.clipboard.writeText(copyText);
-                showToast("Profile details copied!");
-                return;
-              }
-              navigator.clipboard.writeText(item.url);
-              showToast("Link copied!");
-            },
-            onClick: () => setSelectedItem(item),
-            onEnrich:
-              tabToRender === "lp" || tabToRender === "li"
-                ? () => {
-                    handleEnrich(tabToRender, item.id);
-                  }
-                : undefined,
-          };
-          if (tabToRender === "yt")
-            return (
-              <YTCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-                onEnrich={props.onEnrich}
-              />
-            );
-          if (tabToRender === "ypl")
-            return (
-              <YPLCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-                onEnrich={props.onEnrich}
-              />
-            );
-          if (tabToRender === "ys")
-            return (
-              <YSCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-                onEnrich={props.onEnrich}
-              />
-            );
-          if (tabToRender === "lp")
-            return (
-              <LPCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-                onEnrich={props.onEnrich}
-              />
-            );
-          if (tabToRender === "li")
-            return (
-              <LICard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-                onEnrich={props.onEnrich}
-              />
-            );
-          if (tabToRender === "blog")
-            return (
-              <BlogCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-              />
-            );
-          if (tabToRender === "email" )
-            return (
-              <EmailCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-              />
-            );
-          if (tabToRender === "tw")
-            return (
-              <TWCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-                onEnrich={props.onEnrich}
-                showToast={showToast}
-              />
-            );
-          if (tabToRender === "th")
-            return (
-              <THCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-              />
-            );
-          if (tabToRender === "ig" || tabToRender === "igp")
-            return (
-              <IGCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-              />
-            );
-          if (tabToRender === "git")
-            return (
-              <GitCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-              />
-            );
-          if (tabToRender === "web")
-            return (
-              <WebCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-              />
-            );
-          if (tabToRender === "lab")
-            return (
-              <LabCard
-                key={item.id}
-                item={item}
-                onStar={props.onStar}
-                onCopy={props.onCopy}
-                onClick={props.onClick}
-                onDelete={props.onDelete}
-              />
-            );
-          return (
-            <LPCard
-              key={item.id}
-              item={item}
-              onStar={props.onStar}
-              onCopy={props.onCopy}
-              onClick={props.onClick}
-              onDelete={props.onDelete}
-              onEnrich={props.onEnrich}
-            />
-          );
-        })}
+        {items.map((item: any) => (
+          <FeedCardItem
+            key={item.id}
+            item={item}
+            tab={tabToRender}
+            onStar={handleStarItem}
+            onDelete={handleDeleteItem}
+            onCopy={handleCopyItem}
+            onClick={handleSelectItem}
+            onEnrich={tabToRender === "lp" || tabToRender === "li" ? handleEnrichItem : undefined}
+            showToast={showToast}
+          />
+        ))}
       </div>
     );
   };
@@ -1377,7 +1315,10 @@ function MainApp() {
                     <button
                         key={t}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${adminTab === t ? "bg-[#27272A] text-white" : "text-[#A1A1AA] hover:text-white hover:bg-[#18181B]"}`}
-                        onClick={() => setAdminTab(t as ItemType)}
+                        onClick={() => {
+                          setAdminTab(t as ItemType);
+                          setAdminSearchQuery("");
+                        }}
                     >
                         {t === "yt" && <PlayCircle className="w-4 h-4" />}
                         {t === "ypl" && <PlayCircle className="w-4 h-4 text-red-400" />}
@@ -1490,7 +1431,10 @@ function MainApp() {
                   <button
                     key={t}
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap border ${adminTab === t ? "bg-fuchsia-500/10 text-fuchsia-400 border-orange-500/20" : "bg-white/[0.03] text-white/60 border-white/10"}`}
-                    onClick={() => setAdminTab(t as ItemType)}
+                    onClick={() => {
+                      setAdminTab(t as ItemType);
+                      setAdminSearchQuery("");
+                    }}
                   >
                     {t === "yt" ? "YouTube" : t === "ypl" ? "Playlists" : t === "ys" ? "Shorts" : t === "lp" ? "LinkedIn Post" : t === "tw" ? "Twitter/X" : t === "ig" ? "Instagram Reels" : t === "igp" ? "Instagram Posts" : t === "th" ? "Threads" : t === "blog" ? "Blogs" : t === "email" ? "Emails" : t === "git" ? "GitHub" : t === "web" ? "Websites" : t === "lab" ? "Labs" : ""}
                   </button>
@@ -1712,7 +1656,8 @@ function MainApp() {
               </div>
             )}
 
-            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#27272A] pb-4">
+            <div className="mb-4 flex flex-col gap-3 border-b border-[#27272A] pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <h2 className="text-sm font-medium text-[#EDEDED]">
                     Manage Collection
@@ -1729,10 +1674,56 @@ function MainApp() {
                      Auto-fill Missing Details
                    </button>
                 )}
+              </div>
+
+              {/* Search bar for admin items */}
+              <div className="relative w-full">
+                <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={adminSearchQuery}
+                  onChange={(e) => setAdminSearchQuery(e.target.value)}
+                  placeholder={`Search ${adminTab === "yt" ? "YouTube" : adminTab === "ypl" ? "Playlists" : adminTab === "ys" ? "Shorts" : adminTab === "blog" ? "Blogs" : adminTab === "email" ? "Emails" : adminTab === "lp" ? "LinkedIn Posts" : adminTab === "li" ? "LinkedIn Profiles" : adminTab === "tw" ? "Twitter/X" : adminTab === "git" ? "GitHub Repos" : adminTab === "ig" ? "Instagram Reels" : adminTab === "igp" ? "Instagram Posts" : adminTab === "th" ? "Threads" : adminTab === "web" ? "Websites" : adminTab === "lab" ? "Labs" : "items"} by title, URL, tags, company...`}
+                  className="w-full bg-[#121215] border border-white/10 rounded-xl pl-10 pr-9 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50 transition-all"
+                />
+                {adminSearchQuery && (
+                  <button
+                    onClick={() => setAdminSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-0.5"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className="space-y-3">
-              {db[adminTab].map((item) => (
+              {(() => {
+                const q = adminSearchQuery.toLowerCase().trim();
+                const filteredItems = (db[adminTab] || []).filter((item: any) => {
+                  if (!q) return true;
+                  const matchTitle = item.title?.toLowerCase().includes(q);
+                  const matchUrl = item.url?.toLowerCase().includes(q);
+                  const matchDesc = item.description?.toLowerCase().includes(q);
+                  const matchCompany = item.company?.toLowerCase().includes(q);
+                  const matchHeading = item.heading?.toLowerCase().includes(q);
+                  const matchRole = item.role?.toLowerCase().includes(q);
+                  const matchPlatform = item.platform?.toLowerCase().includes(q);
+                  const matchAuthor = item.author?.toLowerCase().includes(q);
+                  const matchTags = Array.isArray(item.tags) && item.tags.some((t: string) => t.toLowerCase().includes(q));
+                  return matchTitle || matchUrl || matchDesc || matchCompany || matchHeading || matchRole || matchPlatform || matchAuthor || matchTags;
+                });
+
+                if (filteredItems.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-white/40 bg-black/20 border border-white/10 rounded-xl border-dashed">
+                      {adminSearchQuery ? `No items found matching "${adminSearchQuery}"` : "No items in this collection yet."}
+                    </div>
+                  );
+                }
+
+                return filteredItems.map((item) => (
                 <div
                   key={item.id}
                   className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-transparent border border-[#27272A] rounded-md cursor-pointer hover:border-[#3F3F46] hover:bg-[#09090B] transition-colors group mb-2"
@@ -1788,7 +1779,7 @@ function MainApp() {
                         <input 
                           className="w-full max-w-[300px] bg-transparent hover:bg-white/[0.03] border border-transparent hover:border-white/10 focus:bg-white/[0.05] rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 focus:outline-none transition-all"
                           placeholder="Company Name"
-                          value={item.company || ""}
+                          value={(item as any).company || ""}
                           onChange={(e) =>
                             updateItem(adminTab, item.id, { company: e.target.value })
                           }
@@ -1801,7 +1792,7 @@ function MainApp() {
                           <input
                             className="w-full max-w-[300px] bg-transparent hover:bg-white/[0.03] border border-transparent hover:border-white/10 focus:bg-white/[0.05] rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 focus:outline-none transition-all"
                             placeholder="Set category (AWS, Azure, AI, DevOps...)"
-                            value={item.heading || ""}
+                            value={(item as any).heading || ""}
                             onChange={(e) =>
                               updateItem("lp", item.id, { heading: e.target.value })
                             }
@@ -1907,12 +1898,8 @@ function MainApp() {
                     </button>
                   </div>
                 </div>
-              ))}
-              {db[adminTab].length === 0 && (
-                <div className="text-center py-12 text-white/30 bg-black/20/[0.02] border border-white/10 rounded-xl border-dashed">
-                  No items in this collection yet.
-                </div>
-              )}
+                ));
+              })()}
             </div>
           </>
           )}
@@ -2399,45 +2386,6 @@ function MainApp() {
 
         {/* Main Content */}
         <main className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto min-h-screen">
-
-             {/* Premium Add Link Bar */}
-             <div className="mb-10 w-full max-w-3xl mx-auto">
-               <div className="relative group flex items-center bg-white/[0.02] backdrop-blur-xl border border-white/10 rounded-full p-2 shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all hover:border-violet-500/50 hover:shadow-[0_0_30px_rgba(139,92,246,0.15)] overflow-hidden">
-                 {/* Inner glow effect */}
-                 <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                 
-                 <div className="pl-4 pr-2 text-white/40">
-                   <LinkIcon className="w-5 h-5" />
-                 </div>
-                 <input
-                   className="flex-1 bg-transparent border-none text-white text-base py-3 px-2 placeholder-white/30 focus:outline-none focus:ring-0 z-10"
-                   placeholder="Paste a link to save to your collection..."
-                   value={linkInput}
-                   onChange={(e) => setLinkInput(e.target.value)}
-                   onKeyDown={(e) => {
-                     if (e.key === 'Enter' && linkInput.trim()) {
-                       setAdminTab(classifyUrl(linkInput) || currentTab);
-                       setShowAdminModal(true);
-                     }
-                   }}
-                 />
-                 <button 
-                   onClick={() => {
-                     if (linkInput.trim()) {
-                       setAdminTab(classifyUrl(linkInput) || currentTab);
-                       setShowAdminModal(true);
-                     } else {
-                       // Just open modal empty
-                       setShowAdminModal(true);
-                     }
-                   }}
-                   className="relative z-10 bg-white/10 hover:bg-white/20 text-white font-medium px-6 py-3 rounded-full transition-colors text-sm border border-white/5 whitespace-nowrap"
-                 >
-                   Add Link
-                 </button>
-               </div>
-             </div>
-
              <div className="mb-8 flex flex-col gap-6">
                  <div>
                      <h2 className="text-3xl font-display font-bold text-white mb-2">

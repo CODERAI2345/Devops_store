@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
 import { Download, Database, Settings, ChevronDown, Check, Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCentralHub } from '../hooks/useCentralHub';
@@ -38,6 +37,7 @@ export default function AdminExport() {
       return;
     }
 
+    const XLSX = await import("xlsx");
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     const sheetName = (COLLECTION_MAP[selectedCollection] || selectedCollection).substring(0, 31);
@@ -54,6 +54,7 @@ export default function AdminExport() {
     // Small delay to allow UI to show loading state
     await new Promise(resolve => setTimeout(resolve, 500));
 
+    const XLSX = await import("xlsx");
     const workbook = XLSX.utils.book_new();
     let hasData = false;
     
