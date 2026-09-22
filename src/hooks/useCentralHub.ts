@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { HubDB, ItemType, HubItem } from "../types";
 import { db, auth } from "../firebase";
 import { SEED_THREADS_ITEMS } from "../data/seedThreads";
-import { isThreadsUrl } from "../utils";
+import { isThreadsUrl, isInstagramReelUrl } from "../utils";
 import {
   collection,
   onSnapshot,
@@ -127,8 +127,13 @@ export function useCentralHub() {
           // In-memory normalization - zero network writes during snapshot reads
           if (data.type === "yt" && (data as any).pid) {
             (data as any).type = "ypl";
-          } else if (data.type === "ig" && data.url && data.url.includes("/p/")) {
-            (data as any).type = "igp";
+          } else if (
+            (data.type === "igp" || data.type === "web" || !data.type) &&
+            data.url &&
+            isInstagramReelUrl(data.url)
+          ) {
+            // Re-route actual reels that were mistakenly stored as igp/web back to 'ig'
+            (data as any).type = "ig";
           } else if ((data.type === "web" || !data.type) && data.url && isThreadsUrl(data.url)) {
             (data as any).type = "th";
           }
@@ -282,6 +287,20 @@ export function useCentralHub() {
     async (type: ItemType, id: number | string, updates: Partial<HubItem>) => {
       // Optimistic update
       setHubDb((prev) => {
+        if (updates.type && updates.type !== type) {
+          const oldList = prev[type] || [];
+          const itemToMove = oldList.find((x) => String(x.id) === String(id));
+          if (itemToMove) {
+            const updatedItem = { ...itemToMove, ...updates };
+            const targetType = updates.type as ItemType;
+            const targetList = prev[targetType] || [];
+            return {
+              ...prev,
+              [type]: oldList.filter((x) => String(x.id) !== String(id)),
+              [targetType]: [updatedItem, ...targetList],
+            };
+          }
+        }
         const list = prev[type] || [];
         return {
           ...prev,

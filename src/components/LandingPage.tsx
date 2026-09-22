@@ -37,7 +37,10 @@ import {
   Users,
   X,
   Youtube,
-  FileText
+  FileText,
+  Sparkles,
+  CheckCircle2,
+  Layers,
 } from "lucide-react";
 
 const domains: { name: string; icon: React.ReactNode; color: string }[] = [
@@ -174,7 +177,7 @@ function StaggerItem({ children, className = "" }: { children: React.ReactNode, 
   );
 }
 
-export default function LandingPage({ setView }: { setView: (v: string) => void }) {
+export default function LandingPage({ setView, onSelectTab }: { setView: (v: string) => void; onSelectTab?: (tab: string) => void }) {
   const [mobileMenu, setMobileMenu] = useState(false);
 
   return (
@@ -188,24 +191,24 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
               <h1 className="text-xl font-bold tracking-tight">
                 DevOps <span className="text-fuchsia-400">Store</span>
               </h1>
-              <p className="text-xs text-slate-200">
-                Learn. Save. Build. Share.
+              <p className="text-xs text-slate-300 font-medium">
+                Free Engineering & Cloud Knowledge Hub
               </p>
             </div>
           </a>
 
           <div className="hidden items-center gap-7 text-sm text-slate-100 md:flex">
             <a href="#domains" className="hover:text-fuchsia-400 transition-colors">
-              Explore
+              Domains
             </a>
-            <a href="#resources" className="hover:text-fuchsia-400 transition-colors">
-              Resources
+            <a href="#overview" className="hover:text-fuchsia-400 transition-colors">
+              What's Inside
+            </a>
+            <a href="#architecture" className="hover:text-fuchsia-400 transition-colors">
+              AWS Architecture
             </a>
             <a href="#learn" className="hover:text-fuchsia-400 transition-colors">
-              Learn & Grow
-            </a>
-            <a href="#about" className="hover:text-fuchsia-400 transition-colors">
-              About
+              Why CentralHub
             </a>
           </div>
 
@@ -220,9 +223,9 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
               </div>
               <button
                 onClick={() => setView('feed')}
-                className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-5 py-3 text-sm font-semibold transition hover:from-violet-800 hover:to-fuchsia-800"
+                className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-5 py-3 text-sm font-semibold transition hover:from-violet-800 hover:to-fuchsia-800 shadow-lg shadow-fuchsia-900/30"
               >
-                Explore Desk <ArrowRight size={16} className="text-fuchsia-300" />
+                Browse Free Library <ArrowRight size={16} className="text-fuchsia-300" />
               </button>
             </div>
           </div>
@@ -238,15 +241,18 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
         {mobileMenu && (
           <div className="border-t border-white/10 bg-[#0d1128] px-6 py-6 md:hidden">
             <div className="flex flex-col gap-5 text-slate-100">
-              <a href="#domains" onClick={() => setMobileMenu(false)}>Explore</a>
-              <a href="#resources" onClick={() => setMobileMenu(false)}>Resources</a>
-              <a href="#learn" onClick={() => setMobileMenu(false)}>Learn & Grow</a>
-              <a href="#about" onClick={() => setMobileMenu(false)}>About</a>
+              <a href="#domains" onClick={() => setMobileMenu(false)}>Domains</a>
+              <a href="#overview" onClick={() => setMobileMenu(false)}>What's Inside</a>
+              <a href="#architecture" onClick={() => setMobileMenu(false)}>AWS Architecture</a>
+              <a href="#learn" onClick={() => setMobileMenu(false)}>Why CentralHub</a>
               <button
-                onClick={() => setView('feed')}
-                className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 text-sm font-semibold text-white transition hover:from-violet-500 hover:to-fuchsia-500"
+                onClick={() => {
+                  setMobileMenu(false);
+                  setView('feed');
+                }}
+                className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 text-sm font-semibold text-white transition hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-fuchsia-900/30"
               >
-                Explore Desk <ArrowRight size={16} />
+                Browse Free Library <ArrowRight size={16} />
               </button>
             </div>
           </div>
@@ -262,22 +268,22 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
           
           {/* LEFT */}
           <StaggerContainer>
-            <StaggerItem className="mb-7 inline-flex items-center gap-2 rounded-full border border-purple-400/30 bg-purple-500/10 px-4 py-2 text-sm text-purple-200">
-              <BookOpen size={16} />
-              The All-In-One DevOps Hub
+            <StaggerItem className="mb-6 inline-flex items-center gap-2 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-4 py-2 text-xs md:text-sm font-medium text-fuchsia-200 shadow-[0_0_15px_rgba(217,70,239,0.15)]">
+              <Sparkles size={15} className="text-fuchsia-400" />
+              100% Free Curated DevOps & Cloud Resource Library
             </StaggerItem>
 
-            <StaggerItem className="max-w-4xl text-5xl font-bold leading-tight tracking-tight md:text-7xl">
-              <span className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.6)]">DevOps Store</span>
+            <StaggerItem className="max-w-4xl text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[1.1] tracking-tight">
+              <span>The Complete Knowledge Hub for</span>
               <br />
-              <span className="bg-gradient-to-r from-fuchsia-400 via-violet-400 to-rose-400 bg-clip-text text-transparent text-3xl md:text-5xl mt-4 block leading-snug">
-                Tired of learning DevOps from different places?
+              <span className="bg-gradient-to-r from-fuchsia-400 via-violet-400 to-amber-300 bg-clip-text text-transparent block mt-2">
+                DevOps & Cloud Engineers
               </span>
             </StaggerItem>
 
             <StaggerItem>
-              <p className="mt-7 max-w-xl text-lg leading-8 text-slate-100">
-                We've centralized the best tutorials, GitHub repositories, tools, and cloud architecture guides. Stop searching and start building real-world infrastructure today.
+              <p className="mt-6 max-w-xl text-base sm:text-lg leading-relaxed text-slate-200">
+                Stop juggling dozens of bookmarked tabs and scattered tutorials. Access curated <strong>AWS production architectures</strong>, <strong>battle-tested GitHub IaC templates</strong>, <strong>video deep-dives</strong>, and <strong>direct talent network hiring emails</strong> — completely free.
               </p>
             </StaggerItem>
 
@@ -290,30 +296,34 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
                 {/* Inner Button */}
                 <button
                   onClick={() => setView('feed')}
-                  className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:from-violet-800 hover:to-fuchsia-800"
+                  className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:from-violet-800 hover:to-fuchsia-800 shadow-xl"
                 >
-                  Explore Hub <ArrowRight size={16} className="text-fuchsia-300" />
+                  Browse Free Library <ArrowRight size={16} className="text-fuchsia-300" />
                 </button>
               </div>
+
+              <a
+                href="#overview"
+                className="flex items-center gap-2 px-5 py-3 rounded-xl border border-white/15 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/30 text-sm font-medium text-slate-200 transition-all"
+              >
+                <Layers size={16} className="text-fuchsia-400" />
+                See What's Inside
+              </a>
             </StaggerItem>
 
             <StaggerItem>
-              <div className="mt-10 flex flex-wrap gap-5 text-sm text-slate-100">
-                <span className="flex items-center gap-2">
-                  <Heart size={16} className="text-pink-400" />
-                  Expert-Curated
+              <div className="mt-8 flex flex-wrap items-center gap-y-3 gap-x-6 text-xs sm:text-sm text-slate-300">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 size={16} className="text-emerald-400" />
+                  No sign-up required
                 </span>
-                <span className="flex items-center gap-2">
-                  <Users size={16} className="text-teal-400" />
-                  Community-Driven
+                <span className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 size={16} className="text-emerald-400" />
+                  Curated & Verified
                 </span>
-                <span className="flex items-center gap-2">
-                  <Server size={16} className="text-purple-400" />
-                  Always Updated
-                </span>
-                <span className="flex items-center gap-2">
-                  <Shield size={16} className="text-green-400" />
-                  Reliable
+                <span className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 size={16} className="text-emerald-400" />
+                  Free & Open Access
                 </span>
               </div>
             </StaggerItem>
@@ -361,6 +371,175 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
           </div>
         </div>
               </FadeIn>
+      </section>
+
+      {/* ================= 30-SECOND OVERVIEW: WHAT IS THIS WEBSITE? ================= */}
+      <section id="overview" className="border-t border-b border-white/10 bg-[#070b14] py-16 scroll-mt-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30 text-fuchsia-400 text-xs font-semibold uppercase tracking-wider mb-3">
+                <Sparkles className="w-3.5 h-3.5" /> What Is Inside DevOps Store?
+              </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+                Everything in One Unified Feed
+              </h2>
+              <p className="mt-2 text-slate-300 text-sm md:text-base max-w-2xl">
+                Not an e-commerce shop. We are a free, community-powered engineering archive curated with real-world infrastructure assets:
+              </p>
+            </div>
+
+            <button
+              onClick={() => setView('feed')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-sm font-semibold text-white transition-all w-fit"
+            >
+              Open Live Resource Desk <ArrowRight className="w-4 h-4 text-fuchsia-400" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Card 1: Cloud Architecture */}
+            <div
+              onClick={() => setView('architecture')}
+              className="group cursor-pointer rounded-2xl border border-orange-500/20 bg-gradient-to-b from-orange-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/40 hover:shadow-[0_8px_30px_rgba(249,115,22,0.12)]"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
+                  <Cloud className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-500/10 text-orange-300 border border-orange-500/20">
+                  Live Topologies
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white group-hover:text-orange-300 transition-colors">
+                AWS & Cloud Architectures
+              </h3>
+              <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                Interactive topologies showing Route 53, ALB, EC2, RDS, and ElastiCache pipelines with step-by-step traffic packet flows.
+              </p>
+            </div>
+
+            {/* Card 2: GitHub IaC */}
+            <div
+              onClick={() => {
+                if (onSelectTab) onSelectTab('git');
+                setView('feed');
+              }}
+              className="group cursor-pointer rounded-2xl border border-purple-500/20 bg-gradient-to-b from-purple-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/40 hover:shadow-[0_8px_30px_rgba(168,85,247,0.12)]"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                  <Github className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                  Ready-to-Deploy
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
+                GitHub IaC & Repositories
+              </h3>
+              <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                Production-grade Terraform modules, Docker compose files, Kubernetes manifests, and CI/CD pipelines ready to clone.
+              </p>
+            </div>
+
+            {/* Card 3: Video Tutorials */}
+            <div
+              onClick={() => {
+                if (onSelectTab) onSelectTab('yt');
+                setView('feed');
+              }}
+              className="group cursor-pointer rounded-2xl border border-red-500/20 bg-gradient-to-b from-red-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-red-500/40 hover:shadow-[0_8px_30px_rgba(239,68,68,0.12)]"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
+                  <Youtube className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500/10 text-red-300 border border-red-500/20">
+                  Deep-Dives
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white group-hover:text-red-300 transition-colors">
+                YouTube Guides & Shorts
+              </h3>
+              <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                Handpicked video breakdowns covering system design, cloud failure scenarios, debugging sessions, and Kubernetes tips.
+              </p>
+            </div>
+
+            {/* Card 4: Recruiter Emails */}
+            <div
+              onClick={() => {
+                if (onSelectTab) onSelectTab('email');
+                setView('feed');
+              }}
+              className="group cursor-pointer rounded-2xl border border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-fuchsia-500/40 hover:shadow-[0_8px_30px_rgba(217,70,239,0.12)]"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center text-fuchsia-400">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/20">
+                  Direct Hiring Contacts
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white group-hover:text-fuchsia-300 transition-colors">
+                Company Talent Directory
+              </h3>
+              <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                Verified recruiter emails and talent network access points from tech companies actively hiring DevOps & SRE talent.
+              </p>
+            </div>
+
+            {/* Card 5: Technical Blogs */}
+            <div
+              onClick={() => {
+                if (onSelectTab) onSelectTab('blog');
+                setView('feed');
+              }}
+              className="group cursor-pointer rounded-2xl border border-cyan-500/20 bg-gradient-to-b from-cyan-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/40 hover:shadow-[0_8px_30px_rgba(6,182,212,0.12)]"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                  Architecture Case Studies
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">
+                In-Depth Technical Blogs
+              </h3>
+              <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                Real-world outage retrospectives, scaling blueprints, zero-trust network configurations, and observability guides.
+              </p>
+            </div>
+
+            {/* Card 6: Interactive Cheatsheets */}
+            <div
+              onClick={() => {
+                if (onSelectTab) onSelectTab('lab');
+                setView('feed');
+              }}
+              className="group cursor-pointer rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-[0_8px_30px_rgba(16,185,129,0.12)]"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <Code2 className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                  Quick Reference
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">
+                Linux & System Cheatsheets
+              </h3>
+              <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                Copy-pasteable one-liners, kubectl commands, Docker network setups, and system diagnostic commands for high-pressure incident response.
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* ================= KUBERNETES ANIMATION ================= */}
@@ -521,10 +700,10 @@ export default function LandingPage({ setView }: { setView: (v: string) => void 
         
         <div className="mt-12 text-center">
           <button 
-            onClick={() => window.location.href = '/hub'}
-            className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-black/20 text-black font-semibold rounded-lg hover:bg-white/[0.03] transition-colors"
+            onClick={() => setView('feed')}
+            className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-xl shadow-fuchsia-900/30 hover:scale-[1.02] active:scale-[0.98]"
           >
-            Access All Catalogs <ArrowRight className="w-5 h-5" />
+            Access All Catalogs & Resources <ArrowRight className="w-5 h-5" />
           </button>
         </div>
               </FadeIn>

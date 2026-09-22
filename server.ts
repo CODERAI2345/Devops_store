@@ -86,23 +86,27 @@ async function startServer() {
       const image = getOg("og:image");
       const ogUrl = getOg("og:url");
 
+      const finalUrl = response.url || targetUrl;
       const shortcodeMatch = html.match(/shortcode=([a-zA-Z0-9_-]+)/i)
-        || (ogUrl || targetUrl).match(/\/(?:t|post|share)\/([a-zA-Z0-9_-]+)/i);
+        || (ogUrl || "").match(/\/(?:t|post)\/([a-zA-Z0-9_-]+)/i)
+        || finalUrl.match(/\/(?:t|post)\/([a-zA-Z0-9_-]+)/i)
+        || targetUrl.match(/\/(?:t|post)\/([a-zA-Z0-9_-]+)/i);
       const shortcode = shortcodeMatch ? shortcodeMatch[1] : "";
 
-      const authorMatch = (ogUrl || targetUrl).match(/@([a-zA-Z0-9_.-]+)/)
+      const authorMatch = (ogUrl || finalUrl).match(/@([a-zA-Z0-9_.-]+)/)
         || title.match(/@([a-zA-Z0-9_.-]+)/);
       const author = authorMatch ? `@${authorMatch[1]}` : (title.includes("on Threads") ? title.replace(/\s+on Threads.*/i, "") : "Threads User");
 
-      const media: Array<{ url: string; type: "image" | "video"; alt?: string }> = [];
+      const media: Array<{ url: string; type: "image" | "video"; alt?: string; thumbnail?: string }> = [];
       const images: string[] = [];
 
-      // Extract all carousel photos from Threads post HTML
+      const cleanImage = image ? image.replace(/&amp;/g, "&") : "";
+
+      // Extract all carousel photos from Threads post HTML so multiple slides are scrollable
       const imgMatches = html.match(/<img[\s\S]*?>/gi) || [];
       for (const m of imgMatches) {
         const isProfile = m.includes("t51.82787-19") || m.includes("sizes=\"36px\"") || m.includes("width=\"36\"") || m.includes("profile");
-        const isPostPhoto = m.includes("CAROUSEL_ITEM") || m.includes("efg=") || m.includes("t51.82787-15") || m.includes("t39.92108-6");
-        if (!isProfile && isPostPhoto) {
+        if (!isProfile) {
           let highestResUrl = "";
           const srcsetMatch = m.match(/srcSet="([^"]+)"/i) || m.match(/srcset="([^"]+)"/i);
           if (srcsetMatch) {
@@ -126,23 +130,34 @@ async function startServer() {
             media.push({
               url: highestResUrl,
               type: "image",
-              alt: description ? description.slice(0, 100) : title,
+              alt: description ? `${description.slice(0, 80)} (${images.length})` : `${title} (${images.length})`,
             });
           }
         }
       }
 
-      // If no carousel photos found but og:image exists, use it as fallback
-      if (images.length === 0 && image) {
-        images.push(image);
+      // If no carousel photos found but og:image exists, use it
+      if (images.length === 0 && cleanImage) {
+        images.push(cleanImage);
         media.push({
-          url: image,
+          url: cleanImage,
           type: "image",
           alt: description ? description.slice(0, 100) : title,
         });
       }
 
-      const thumbnail = images.length > 0 ? images[0] : (image || "");
+      const ogVideo = getOg("og:video");
+      const cleanVideo = ogVideo ? ogVideo.replace(/&amp;/g, "&") : "";
+      if (cleanVideo) {
+        media.unshift({
+          url: cleanVideo,
+          type: "video",
+          thumbnail: cleanImage,
+          alt: description ? description.slice(0, 100) : title,
+        });
+      }
+
+      const thumbnail = cleanImage || (images.length > 0 ? images[0] : "");
 
       const resultData = {
         title: title || "Threads Post",
@@ -150,9 +165,10 @@ async function startServer() {
         thumbnail,
         images,
         media,
+        videoUrl: cleanVideo || undefined,
         shortcode,
         author,
-        canonicalUrl: ogUrl || targetUrl,
+        canonicalUrl: ogUrl || finalUrl,
       };
 
       setCached(cacheKey, resultData);
@@ -164,6 +180,38 @@ async function startServer() {
     } catch (err: any) {
       console.error("Threads meta fetch error:", err);
       return res.status(500).json({ error: err?.message || "Failed to fetch Threads metadata" });
+    }
+  });
+
+  // High-performance image proxy endpoint to bypass CORS / Referrer restrictions safely
+  app.get("/api/image-proxy", async (req, res) => {
+    const rawUrl = req.query.url as string;
+    if (!rawUrl || (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://"))) {
+      return res.status(400).send("Invalid URL parameter");
+    }
+
+    try {
+      const upstream = await fetch(rawUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        },
+      });
+
+      if (!upstream.ok) {
+        return res.status(upstream.status).send("Upstream image fetch failed");
+      }
+
+      const contentType = upstream.headers.get("content-type") || "image/jpeg";
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400, immutable");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+
+      const arrayBuffer = await upstream.arrayBuffer();
+      return res.send(Buffer.from(arrayBuffer));
+    } catch (err: any) {
+      console.error("Image proxy error:", err.message);
+      return res.status(500).send("Proxy error: " + err.message);
     }
   });
 
@@ -371,6 +419,114 @@ async function startServer() {
     } catch (err: any) {
       console.error("Scrape meta fetch error:", err);
       return res.status(500).json({ error: err?.message || "Failed to scrape metadata" });
+    }
+  });
+
+  // Dedicated YouTube & YouTube Playlist metadata endpoint
+  app.get("/api/youtube-meta", async (req, res) => {
+    try {
+      const targetUrl = req.query.url as string;
+      if (!targetUrl) {
+        return res.status(400).json({ error: "Missing url parameter" });
+      }
+
+      const cacheKey = `yt_${targetUrl}`;
+      const cached = getCached(cacheKey);
+      if (cached) {
+        return res.json({ success: true, data: cached });
+      }
+
+      let parsedPid = "";
+      try {
+        const u = new URL(targetUrl);
+        parsedPid = u.searchParams.get("list") || "";
+      } catch (e) {
+        const m = targetUrl.match(/[?&]list=([^&]+)/i);
+        if (m) parsedPid = m[1];
+      }
+
+      let parsedVid = "";
+      try {
+        const u = new URL(targetUrl);
+        if (u.hostname === "youtu.be") parsedVid = u.pathname.slice(1).split("?")[0] || "";
+        else if (u.pathname.startsWith("/shorts/")) parsedVid = u.pathname.split("/")[2] || "";
+        else parsedVid = u.searchParams.get("v") || "";
+      } catch (e) {
+        const m = targetUrl.match(/(?:v=|\/shorts\/|youtu\.be\/)([^?&]+)/i);
+        if (m) parsedVid = m[1];
+      }
+
+      let title = parsedPid ? "YouTube Playlist" : "YouTube Video";
+      let author = "";
+      let thumbnail = "";
+
+      // 1. Try official YouTube oEmbed first (fast & reliable)
+      try {
+        const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(targetUrl)}&format=json`;
+        const oembedRes = await fetch(oembedUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+          },
+        });
+        if (oembedRes.ok) {
+          const oembedData = await oembedRes.json();
+          if (oembedData.title) title = oembedData.title;
+          if (oembedData.author_name) author = oembedData.author_name;
+          if (oembedData.thumbnail_url) thumbnail = oembedData.thumbnail_url;
+        }
+      } catch (oembedErr) {
+        console.warn("YouTube oEmbed fetch error:", oembedErr);
+      }
+
+      // 2. If thumbnail is missing, construct fallback
+      if (!thumbnail) {
+        if (parsedVid) {
+          thumbnail = `https://img.youtube.com/vi/${parsedVid}/hqdefault.jpg`;
+        } else if (parsedPid) {
+          thumbnail = `https://img.youtube.com/vi/placeholder/hqdefault.jpg`;
+        }
+      }
+
+      // 3. If title is still generic and we have a playlist, try scraping YouTube HTML meta tags
+      if (parsedPid && (!title || title === "YouTube Playlist")) {
+        try {
+          const pageRes = await fetch(`https://www.youtube.com/playlist?list=${parsedPid}`, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept-Language": "en-US,en;q=0.9",
+            },
+          });
+          if (pageRes.ok) {
+            const html = await pageRes.text();
+            const ogTitle = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)?.[1]
+              || html.match(/<meta\s+name=["']title["']\s+content=["']([^"']+)["']/i)?.[1]
+              || html.match(/<title>([^<]+)<\/title>/i)?.[1];
+            if (ogTitle) {
+              title = ogTitle.replace(/\s*-\s*YouTube$/i, "").trim();
+            }
+            const ogImg = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)?.[1];
+            if (ogImg && (!thumbnail || thumbnail.includes("placeholder"))) {
+              thumbnail = ogImg;
+            }
+          }
+        } catch (scrapeErr) {
+          console.warn("YouTube HTML scrape fallback error:", scrapeErr);
+        }
+      }
+
+      const result = {
+        title,
+        author,
+        thumbnail,
+        pid: parsedPid || undefined,
+        vid: parsedVid || undefined,
+      };
+
+      setCached(cacheKey, result);
+      return res.json({ success: true, data: result });
+    } catch (err: any) {
+      console.error("YouTube meta endpoint error:", err);
+      return res.status(500).json({ error: err?.message || "Failed to resolve YouTube metadata" });
     }
   });
 

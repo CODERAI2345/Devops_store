@@ -215,7 +215,7 @@ export function ThreadsModal({
           <div className="flex flex-col w-full">
             {/* Media Section: Horizontal Swipeable Carousel or Official Embed */}
             {showEmbed && item.shortcode ? (
-              <div className="w-full h-[500px] bg-black/40 relative flex items-center justify-center border-b border-white/10">
+              <div className="w-full min-h-[580px] h-[580px] sm:h-[620px] bg-black/40 relative flex items-center justify-center border-b border-white/10">
                 <iframe
                   src={`https://www.threads.net/t/${item.shortcode}/embed`}
                   className="w-full h-full border-0"

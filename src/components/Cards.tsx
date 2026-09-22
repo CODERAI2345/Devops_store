@@ -21,6 +21,9 @@ import {
   Terminal,
   Check,
   Code2,
+  Tag,
+  Maximize2,
+  ArrowUpRight,
 } from "lucide-react";
 
 interface CardProps {
@@ -108,6 +111,13 @@ export const YTCard = React.memo(function YTCard({ item, onStar, onDelete, onCop
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
         
+        {/* Center hover indicator */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 backdrop-blur-[1px] pointer-events-none">
+          <span className="px-3 py-1 rounded-full bg-red-600/90 text-white text-xs font-semibold shadow-lg flex items-center gap-1.5 transform scale-95 group-hover:scale-100 transition-transform">
+            <Maximize2 className="w-3.5 h-3.5" /> Pop up full post
+          </span>
+        </div>
+        
         {/* Top actions */}
         <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 translate-y-[-10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
            <button
@@ -150,6 +160,16 @@ export const YTCard = React.memo(function YTCard({ item, onStar, onDelete, onCop
              {item.author}
            </div>
         )}
+
+        {/* Action affordance footer */}
+        <div className="mt-3 pt-3 border-t border-white/[0.08] flex items-center justify-between text-xs text-white/50 group-hover:text-white/90 transition-colors">
+          <span className="flex items-center gap-1.5 font-medium text-red-400 group-hover:text-red-300">
+            <Maximize2 className="w-3.5 h-3.5" /> Pop up full video & notes
+          </span>
+          <span className="text-[11px] text-white/40 flex items-center gap-0.5 group-hover:text-white transition-colors">
+            Expand <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </span>
+        </div>
       </div>
       </div>
     </div>
@@ -175,6 +195,13 @@ export const YPLCard = React.memo(function YPLCard({ item, onStar, onDelete, onC
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+        
+        {/* Center hover indicator */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 backdrop-blur-[1px] pointer-events-none">
+          <span className="px-3 py-1 rounded-full bg-red-600/90 text-white text-xs font-semibold shadow-lg flex items-center gap-1.5 transform scale-95 group-hover:scale-100 transition-transform">
+            <Maximize2 className="w-3.5 h-3.5" /> Pop up full playlist
+          </span>
+        </div>
         
         {/* Top actions */}
         <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 translate-y-[-10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
@@ -218,6 +245,16 @@ export const YPLCard = React.memo(function YPLCard({ item, onStar, onDelete, onC
              {item.author}
            </div>
         )}
+
+        {/* Action affordance footer */}
+        <div className="mt-3 pt-3 border-t border-white/[0.08] flex items-center justify-between text-xs text-white/50 group-hover:text-white/90 transition-colors">
+          <span className="flex items-center gap-1.5 font-medium text-red-400 group-hover:text-red-300">
+            <Maximize2 className="w-3.5 h-3.5" /> Pop up full playlist & videos
+          </span>
+          <span className="text-[11px] text-white/40 flex items-center gap-0.5 group-hover:text-white transition-colors">
+            Playlist <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -242,6 +279,13 @@ export const YSCard = React.memo(function YSCard({ item, onStar, onDelete, onCop
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+        
+        {/* Center hover indicator */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 backdrop-blur-[1px] pointer-events-none">
+          <span className="px-3 py-1 rounded-full bg-red-600/90 text-white text-xs font-semibold shadow-lg flex items-center gap-1.5 transform scale-95 group-hover:scale-100 transition-transform">
+            <Maximize2 className="w-3.5 h-3.5" /> Pop up short
+          </span>
+        </div>
         
         {/* Top actions */}
         <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 translate-y-[-10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
@@ -285,6 +329,16 @@ export const YSCard = React.memo(function YSCard({ item, onStar, onDelete, onCop
              {item.author}
            </div>
         )}
+
+        {/* Action affordance footer */}
+        <div className="mt-3 pt-3 border-t border-white/[0.08] flex items-center justify-between text-xs text-white/50 group-hover:text-white/90 transition-colors">
+          <span className="flex items-center gap-1.5 font-medium text-red-400 group-hover:text-red-300">
+            <Maximize2 className="w-3.5 h-3.5" /> Pop up to watch & read details
+          </span>
+          <span className="text-[11px] text-white/40 flex items-center gap-0.5 group-hover:text-white transition-colors">
+            Short <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -399,6 +453,16 @@ export const LICard = React.memo(function LICard({ item, onStar, onDelete, onCop
             </p>
           </div>
         )}
+
+        {/* Action affordance footer */}
+        <div className="mt-auto pt-3 border-t border-[#38434f] flex items-center justify-between text-xs text-[#70b5f9] group-hover:text-white transition-colors">
+          <span className="flex items-center gap-1.5 font-medium">
+            <Maximize2 className="w-3.5 h-3.5" /> Pop up full profile & skills
+          </span>
+          <span className="text-[11px] text-[#70b5f9] flex items-center gap-0.5">
+            Profile <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -510,6 +574,19 @@ export const LPCard = React.memo(function LPCard({ item, onStar, onDelete, onCop
           </div>
         )}
       </div>
+
+      {/* Clickable footer affordance that works even if iframe captures clicks */}
+      <div 
+        onClick={onClick}
+        className="p-2.5 px-3 bg-[#1d2226] border-t border-[#38434f] flex items-center justify-between text-xs text-[#70b5f9] hover:bg-[#283036] transition-colors cursor-pointer shrink-0 z-20"
+      >
+        <span className="flex items-center gap-1.5 font-semibold text-white/90">
+          <Maximize2 className="w-3.5 h-3.5 text-[#70b5f9]" /> Pop up to see full post & notes
+        </span>
+        <span className="text-[11px] text-[#70b5f9] flex items-center gap-0.5">
+          Expand <ArrowUpRight className="w-3 h-3" />
+        </span>
+      </div>
     </div>
   );
 });
@@ -537,6 +614,13 @@ export const BlogCard = React.memo(function BlogCard({ item, onStar, onDelete, o
               className="w-full h-full object-cover group-hover:scale-105 group-hover:opacity-85 transition-all duration-700 ease-out" 
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0d1017]/80 via-transparent to-transparent opacity-70" />
+            
+            {/* Center hover indicator */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[1px] pointer-events-none">
+              <span className="px-3 py-1 rounded-full bg-yellow-500/90 text-black text-xs font-bold shadow-lg flex items-center gap-1.5 transform scale-95 group-hover:scale-100 transition-transform">
+                <Maximize2 className="w-3.5 h-3.5" /> Pop up full post
+              </span>
+            </div>
           </div>
         )}
         <div className="p-5 flex-1 flex flex-col">
@@ -582,6 +666,16 @@ export const BlogCard = React.memo(function BlogCard({ item, onStar, onDelete, o
               {item.description}
             </p>
           )}
+
+          {/* Action affordance footer */}
+          <div className="mt-4 pt-3 border-t border-white/[0.08] flex items-center justify-between text-xs text-white/50 group-hover:text-white/90 transition-colors">
+            <span className="flex items-center gap-1.5 font-medium text-yellow-400 group-hover:text-yellow-300">
+              <Maximize2 className="w-3.5 h-3.5" /> Pop up to read full blog & notes
+            </span>
+            <span className="text-[11px] text-white/40 flex items-center gap-0.5 group-hover:text-white transition-colors">
+              Read <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -657,6 +751,16 @@ export const EmailCard = React.memo(function EmailCard({ item, onStar, onDelete,
                 {item.description}
             </p>
         )}
+
+        {/* Action affordance footer */}
+        <div className="mt-4 pt-3 border-t border-white/[0.08] flex items-center justify-between text-xs text-white/50 group-hover:text-white/90 transition-colors">
+          <span className="flex items-center gap-1.5 font-medium text-purple-400 group-hover:text-purple-300">
+            <Maximize2 className="w-3.5 h-3.5" /> Pop up details & templates
+          </span>
+          <span className="text-[11px] text-white/40 flex items-center gap-0.5 group-hover:text-white transition-colors">
+            Contact <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </span>
+        </div>
     </div>
   );
 });
@@ -722,6 +826,12 @@ export const GitCard = React.memo(function GitCard({ item, onStar, onDelete, onC
 
       <div className="w-full h-[150px] shrink-0 bg-[#010409] border-y border-[#30363d] relative overflow-hidden flex items-center justify-center">
          <img loading="lazy" src={ogImageUrl} alt="Repository Banner" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+         {/* Center hover indicator */}
+         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[1px] pointer-events-none">
+           <span className="px-3 py-1 rounded-full bg-purple-600/90 text-white text-xs font-semibold shadow-lg flex items-center gap-1.5 transform scale-95 group-hover:scale-100 transition-transform">
+             <Maximize2 className="w-3.5 h-3.5" /> Pop up full post
+           </span>
+         </div>
       </div>
       
       <div className="p-4 flex flex-col flex-1 overflow-hidden">
@@ -758,7 +868,7 @@ export const GitCard = React.memo(function GitCard({ item, onStar, onDelete, onC
 
         <div className="flex-1"></div>
 
-        <div className="flex items-center justify-between text-xs text-[#848d97] mt-4 mb-4">
+        <div className="flex items-center justify-between text-xs text-[#848d97] mt-4 mb-3">
            <span>Updated {item.date || 'recently'}</span>
            <span className="px-2.5 py-0.5 rounded-full border border-green-500/20 text-green-400 bg-green-500/10 font-medium">Public</span>
         </div>
@@ -767,11 +877,21 @@ export const GitCard = React.memo(function GitCard({ item, onStar, onDelete, onC
           href={item.url} 
           target="_blank" 
           rel="noreferrer" 
-          className="w-full py-2 bg-[#21262d] hover:bg-[#30363d] border border-[#363b42] text-white rounded-lg flex items-center justify-center gap-2 text-sm font-semibold transition-all shrink-0"
+          className="w-full py-2 bg-[#21262d] hover:bg-[#30363d] border border-[#363b42] text-white rounded-lg flex items-center justify-center gap-2 text-sm font-semibold transition-all shrink-0 mb-3"
           onClick={(e) => e.stopPropagation()}
         >
           View Repository <ExternalLink className="w-3.5 h-3.5" />
         </a>
+
+        {/* Action affordance footer */}
+        <div className="pt-2.5 border-t border-[#30363d] flex items-center justify-between text-xs text-[#848d97] group-hover:text-white transition-colors">
+          <span className="flex items-center gap-1.5 font-medium text-purple-400 group-hover:text-purple-300">
+            <Maximize2 className="w-3.5 h-3.5" /> Pop up repo details & notes
+          </span>
+          <span className="text-[11px] text-[#848d97] flex items-center gap-0.5 group-hover:text-white transition-colors">
+            Details <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </span>
+        </div>
       </div>
       </div>
     </div>
@@ -791,14 +911,14 @@ export const IGCard = React.memo(function IGCard({ item, onStar, onDelete, onCop
           <div className="flex items-center justify-center shrink-0">
             <Instagram className="w-5 h-5 text-pink-400" />
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             {item.heading && (
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider truncate max-w-[200px]">
+              <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider truncate max-w-[200px]">
                 {item.heading}
               </span>
             )}
-            <span className="text-sm font-semibold text-white max-w-[200px] truncate">
-              {item.title && item.title !== "Instagram Post" && item.title !== "Instagram Reel" ? item.title : (item.heading ? "" : item.type === "igp" ? "Instagram Post" : "Instagram Reel")}
+            <span className="text-sm font-semibold text-white max-w-[200px] truncate" title={item.title || item.heading || (item.type === "igp" ? "Instagram Post" : "Instagram Reel")}>
+              {item.title && item.title !== "Instagram Post" && item.title !== "Instagram Reel" ? item.title : (item.heading ? item.heading : item.type === "igp" ? "Instagram Post" : "Instagram Reel")}
             </span>
           </div>
         </div>
@@ -819,6 +939,21 @@ export const IGCard = React.memo(function IGCard({ item, onStar, onDelete, onCop
  
         </div>
       </div>
+
+      {/* Tags banner if present */}
+      {Array.isArray(item.tags) && item.tags.length > 0 && (
+        <div className="px-3 py-1.5 bg-[#161a1d] border-b border-[#38434f]/50 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+          <Tag className="w-3 h-3 text-pink-400/70 shrink-0" />
+          {item.tags.map((tag: string, idx: number) => (
+            <span
+              key={idx}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 font-medium whitespace-nowrap border border-pink-500/20"
+            >
+              #{tag.replace(/^#/, "")}
+            </span>
+          ))}
+        </div>
+      )}
       
       <div className="flex-1 relative bg-[#1a1a1a] flex flex-col">
          {item.shortcode ? (
@@ -841,6 +976,19 @@ export const IGCard = React.memo(function IGCard({ item, onStar, onDelete, onCop
                </a>
             </div>
          )}
+      </div>
+
+      {/* Clickable footer affordance */}
+      <div 
+        onClick={onClick}
+        className="p-2.5 px-3 bg-[#1d2226] border-t border-[#38434f] flex items-center justify-between text-xs text-pink-400 hover:bg-[#283036] transition-colors cursor-pointer shrink-0 z-20"
+      >
+        <span className="flex items-center gap-1.5 font-semibold text-white/90">
+          <Maximize2 className="w-3.5 h-3.5 text-pink-400" /> Pop up full post & player
+        </span>
+        <span className="text-[11px] text-pink-400 flex items-center gap-0.5">
+          Expand <ArrowUpRight className="w-3 h-3" />
+        </span>
       </div>
     </div>
   );
@@ -880,11 +1028,15 @@ export const THCard = React.memo(function THCard({ item, onStar, onDelete, onCop
         </div>
         
         <div className="flex gap-1.5 items-center shrink-0">
-          {item.shortcode && mediaList.length > 0 && (
+          {item.shortcode && (
             <button
               onClick={(e) => { e.stopPropagation(); setShowEmbed((v) => !v); }}
-              className="px-2 py-1 rounded text-[10px] font-semibold bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 transition-colors"
-              title={showEmbed ? "Switch to swipeable media carousel" : "Switch to embed view"}
+              className={`px-2 py-1 rounded text-[10px] font-semibold border transition-colors ${
+                showEmbed
+                  ? "bg-violet-600/30 text-violet-300 border-violet-500/40 hover:bg-violet-600/40"
+                  : "bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border-white/10"
+              }`}
+              title={showEmbed ? "Switch to media preview" : "Switch to embed view"}
             >
               {showEmbed ? "Media" : "Embed"}
             </button>
@@ -914,6 +1066,7 @@ export const THCard = React.memo(function THCard({ item, onStar, onDelete, onCop
               src={`https://www.threads.net/t/${item.shortcode}/embed`}
               title="Threads embed"
               className="w-full h-full absolute inset-0 bg-black/20"
+              allow="encrypted-media"
             />
           </div>
         ) : mediaList.length > 0 ? (
@@ -947,19 +1100,16 @@ export const THCard = React.memo(function THCard({ item, onStar, onDelete, onCop
       </div>
 
       {/* Card Footer */}
-      <div className="px-3 py-2 border-t border-white/10 bg-[#121524] flex items-center justify-between shrink-0 text-xs">
-        <span className="text-white/40 text-[11px] truncate max-w-[150px]">
-          {item.date || "Threads"}
+      <div 
+        onClick={onClick}
+        className="px-3 py-2.5 border-t border-white/10 bg-[#121524] flex items-center justify-between shrink-0 text-xs hover:bg-[#1a1e33] transition-colors cursor-pointer"
+      >
+        <span className="flex items-center gap-1.5 font-semibold text-violet-400">
+          <Maximize2 className="w-3.5 h-3.5 text-violet-400" /> Pop up full thread & notes
         </span>
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
-        >
-          Open <ExternalLink className="w-3 h-3" />
-        </a>
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-violet-300">
+          Expand <ArrowUpRight className="w-3 h-3" />
+        </span>
       </div>
     </div>
   );
@@ -1108,6 +1258,16 @@ export const WebCard = React.memo(function WebCard({ item, onStar, onDelete, onC
                 )}
               </div>
             )}
+
+            {/* Action affordance footer */}
+            <div className="pt-2.5 border-t border-black/10 flex items-center justify-between text-xs text-black/60 group-hover:text-black transition-colors mt-1">
+              <span className="flex items-center gap-1.5 font-medium text-rose-600 group-hover:text-rose-700">
+                <Maximize2 className="w-3.5 h-3.5" /> Pop up details & overview
+              </span>
+              <span className="text-[11px] text-black/50 flex items-center gap-0.5 group-hover:text-black transition-colors">
+                Full view <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -1212,6 +1372,13 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
               {platformName}
             </span>
           </div>
+
+          {/* Center hover indicator */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[1px] pointer-events-none z-10">
+            <span className="px-3 py-1 rounded-full bg-emerald-700 text-white text-xs font-semibold shadow-lg flex items-center gap-1.5 transform scale-95 group-hover:scale-100 transition-transform">
+              <Maximize2 className="w-3.5 h-3.5" /> Pop up lab guide
+            </span>
+          </div>
         </div>
 
         {/* Body details */}
@@ -1244,6 +1411,16 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
               <span className="flex items-center gap-1.5 text-black group-hover:text-[#006400] transition-colors font-bold">
                 <Terminal className="w-4 h-4 text-[#006400]" />
                 Start Lab <ExternalLink className="w-3.5 h-3.5" />
+              </span>
+            </div>
+
+            {/* Action affordance footer */}
+            <div className="flex items-center justify-between text-xs font-semibold text-black/60 pt-2.5 border-t border-black/10 mt-1">
+              <span className="flex items-center gap-1.5 font-medium text-emerald-800 group-hover:text-emerald-950">
+                <Maximize2 className="w-3.5 h-3.5" /> Pop up lab guide & sandbox
+              </span>
+              <span className="text-[11px] text-black/50 flex items-center gap-0.5 group-hover:text-black transition-colors">
+                Full view <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </span>
             </div>
           </div>

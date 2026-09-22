@@ -1,20 +1,49 @@
 {
-  "short_name": "Hub Admin",
+  "id": "/admin",
   "name": "Central Hub Admin",
+  "short_name": "Hub Admin",
+  "description": "Mobile Admin Console for managing Central Hub content, blogs, videos, and resources directly from your Android phone.",
+  "start_url": "/admin/dashboard?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0B0F19",
+  "background_color": "#000000",
+  "categories": ["productivity", "utilities", "developer"],
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "start_url": "/",
-  "display": "standalone",
-  "theme_color": "#050505",
-  "background_color": "#050505"
+  "shortcuts": [
+    {
+      "name": "Quick Add Link",
+      "short_name": "Add Link",
+      "description": "Add new link, blog, or video to Central Hub",
+      "url": "/admin/dashboard?action=add&source=pwa_shortcut",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Manage Blogs",
+      "short_name": "Blogs",
+      "description": "View and manage technical blogs",
+      "url": "/admin/dashboard?tab=blog&source=pwa_shortcut",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }

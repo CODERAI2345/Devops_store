@@ -54,15 +54,67 @@ export function isThreadsUrl(url: string): boolean {
   return false;
 }
 
+export function isInstagramUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const raw = url.trim().toLowerCase();
+    if (raw.includes("instagram.com") || raw.includes("instagr.am")) return true;
+    const parsed = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    return parsed.hostname.includes("instagram") || parsed.hostname.includes("instagr.am");
+  } catch (e) {
+    const l = url.toLowerCase();
+    return l.includes("instagram.com") || l.includes("instagr.am");
+  }
+}
+
+export function isInstagramReelUrl(url: string): boolean {
+  if (!isInstagramUrl(url)) return false;
+  try {
+    const raw = url.trim().toLowerCase();
+    if (
+      raw.includes("/reel/") ||
+      raw.includes("/reels/") ||
+      raw.includes("/share/reel/") ||
+      raw.includes("/tv/") ||
+      raw.includes("reel=true")
+    ) {
+      return true;
+    }
+    const parsed = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    const pathname = parsed.pathname.toLowerCase();
+    return (
+      pathname.includes("/reel/") ||
+      pathname.includes("/reels/") ||
+      pathname.includes("/share/reel/") ||
+      pathname.includes("/tv/")
+    );
+  } catch (e) {
+    const l = url.toLowerCase();
+    return (
+      l.includes("/reel/") ||
+      l.includes("/reels/") ||
+      l.includes("/share/reel/") ||
+      l.includes("/tv/")
+    );
+  }
+}
+
 export function classifyUrl(u: string): "yt" | "ys" | "ypl" | "li" | "lp" | "tw" | "git" | "blog" | "email" | "ig" | "igp" | "th" | "web" | "lab" | null {
   if (isThreadsUrl(u)) return "th";
-  if (u.toLowerCase().includes("instagram.com") || u.toLowerCase().includes("instagr.am")) {
-    if (u.toLowerCase().includes("/p/")) return "igp";
+  if (isInstagramUrl(u)) {
+    // If it's explicitly a reel, reels, share/reel, or tv path, classify as 'ig' (Reel)
+    if (isInstagramReelUrl(u)) {
+      return "ig";
+    }
+    const l = u.toLowerCase();
+    if (l.includes("/p/") || l.includes("/share/p/")) {
+      return "igp";
+    }
     return "ig";
   }
   const l = u.toLowerCase();
   if (l.includes("github.com") && l.split("/").length >= 4) return "git";
-  if (l.includes("youtube.com/playlist")) return "ypl";
+  if (l.includes("youtube.com/playlist") || (l.includes("youtube.com") && (l.includes("list=") || l.includes("&list=")))) return "ypl";
   if (l.includes("youtube.com/shorts/")) return "ys";
   if (l.includes("youtube.com/watch") || l.includes("youtu.be/")) return "yt";
   if (l.includes("linkedin.com/in/")) return "li";
@@ -72,14 +124,41 @@ export function classifyUrl(u: string): "yt" | "ys" | "ypl" | "li" | "lp" | "tw"
     l.includes("linkedin.com/pulse/")
   )
     return "lp";
-  if (l.includes("twitter.com") || l.includes("x.com") || l.includes("t.co")) return "tw";
+  if (l.includes("twitter.com") || l.includes("x.com") || /(?:^|\/\/|\.)t\.co(?:\/|$)/.test(l)) return "tw";
   if (
     l.includes("medium.com") ||
     l.includes("hashnode.dev") ||
+    l.includes("hashnode.com") ||
     l.includes("dev.to") ||
     l.includes("substack.com") ||
+    l.includes("freedium") ||
+    l.includes("plainenglish.io") ||
+    l.includes("awstip.com") ||
+    l.includes("stackademic.com") ||
+    l.includes("devopscube.com") ||
+    l.includes("techiescamp.com") ||
+    l.includes("hackernoon.com") ||
+    l.includes("freecodecamp.org") ||
+    l.includes("towardsdatascience.com") ||
+    l.includes("infoq.com") ||
+    l.includes("dzone.com") ||
+    l.includes("blogspot.com") ||
+    l.includes("wordpress.com") ||
+    l.includes("ghost.io") ||
+    l.includes("mirror.xyz") ||
+    l.includes("beehiiv.com") ||
+    l.includes("betterprogramming.pub") ||
     l.includes("blog.") ||
-    l.includes("article")
+    l.includes("blogs.") ||
+    l.includes("/blog/") ||
+    l.includes("/blogs/") ||
+    l.includes("/article") ||
+    l.includes("/articles") ||
+    l.includes("/newsletter/") ||
+    l.includes("newsletter.") ||
+    l.includes("/story/") ||
+    l.includes("/stories/") ||
+    (/\/(?:post|p)\/[a-z0-9-_]+/i.test(l) && !l.includes("facebook.com") && !l.includes("linkedin.com") && !l.includes("instagram.com") && !l.includes("threads.net"))
   )
     return "blog";
   if (l.startsWith("mailto:")) return "email";
@@ -262,9 +341,10 @@ export function getTwitterEmbedUrl(url: string) {
 
 export function extractInstagramShortcode(url: string) {
   try {
-    const u = new URL(url);
+    const raw = url.trim();
+    const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
     if (!u.hostname.includes('instagram.com') && !u.hostname.includes('instagr.am')) return null;
-    const m = u.pathname.match(/\/(?:p|reel|reels|tv)\/([^\/?#]+)/i);
+    const m = u.pathname.match(/(?:\/p\/|\/reel\/|\/reels\/|\/tv\/|\/share\/reel\/|\/share\/p\/)([^\/?#]+)/i);
     return m ? m[1] : null;
   } catch (e) {
     return null;
@@ -279,7 +359,8 @@ export function extractThreadsShortcode(url: string) {
     if (!u.hostname.includes('threads.net') && !u.hostname.includes('threads.com') && !u.hostname.includes('threads')) {
       return null;
     }
-    const m = u.pathname.match(/\/(?:t|post|share)\/([^\/?#]+)/i);
+    // Match /post/SHORTCODE or /t/SHORTCODE
+    const m = u.pathname.match(/\/(?:t|post)\/([^\/?#]+)/i);
     return m ? m[1] : null;
   } catch (e) {
     return null;

@@ -361,7 +361,7 @@ export function Modal({
                   />
                 </div>
 
-                {(item.type === "lp" || item.type === "tw" || item.type === "ys" || item.type === "yt" || item.type === "ig" || item.type === "li" || item.type === "th") && (
+                {(item.type === "lp" || item.type === "tw" || item.type === "ys" || item.type === "yt" || item.type === "ig" || item.type === "igp" || item.type === "li" || item.type === "th") && (
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider pl-1">
                       {item.type === "tw" ? "Concept Tag / Topic" : "Heading"}

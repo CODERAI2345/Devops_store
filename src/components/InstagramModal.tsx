@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Star, Copy, X, ExternalLink, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, Copy, X, ExternalLink, Image as ImageIcon, ChevronLeft, ChevronRight, Tag } from "lucide-react";
 
 export function InstagramModal({
   item,
@@ -10,6 +10,7 @@ export function InstagramModal({
   onNext,
   currentIndex,
   totalCount,
+  onChangeType,
 }: {
   item: any;
   onClose: () => void;
@@ -19,6 +20,7 @@ export function InstagramModal({
   onNext?: () => void;
   currentIndex?: number;
   totalCount?: number;
+  onChangeType?: (newType: "ig" | "igp") => void;
 }) {
   const [iframeFailed, setIframeFailed] = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -99,17 +101,34 @@ export function InstagramModal({
              <div className="w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center border border-pink-500/30 shrink-0">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-pink-500"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>
              </div>
-             <div className="flex flex-col">
+             <div className="flex flex-col min-w-0">
                <div className="flex items-center gap-2">
-                 <span className="text-sm font-semibold text-white drop-shadow-md">Instagram</span>
+                 <span className="text-sm font-semibold text-white drop-shadow-md truncate max-w-[190px]" title={item.title || (item.type === "igp" ? "Instagram Post" : "Instagram Reel")}>
+                   {item.title && item.title !== "Instagram Post" && item.title !== "Instagram Reel" ? item.title : (item.heading ? item.heading : (item.type === "igp" ? "Instagram Post" : "Instagram Reel"))}
+                 </span>
+                 {onChangeType ? (
+                   <select
+                     value={item.type || "ig"}
+                     onChange={(e) => onChangeType(e.target.value as "ig" | "igp")}
+                     className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 font-semibold border border-pink-500/30 cursor-pointer focus:outline-none"
+                     title="Switch between Instagram Reel and Instagram Post"
+                   >
+                     <option value="ig" className="bg-[#121216] text-white">Reel</option>
+                     <option value="igp" className="bg-[#121216] text-white">Post</option>
+                   </select>
+                 ) : (
+                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-300 font-semibold border border-pink-500/25">
+                     {item.type === "igp" ? "Post" : "Reel"}
+                   </span>
+                 )}
                  {currentIndex && totalCount ? (
-                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300 font-mono">
+                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300 font-mono shrink-0">
                      {currentIndex} / {totalCount}
                    </span>
                  ) : null}
                </div>
-               {item.heading && (
-                 <span className="text-[11px] text-emerald-400 font-medium truncate max-w-[170px]">{item.heading}</span>
+               {item.heading && item.title && item.title !== item.heading && (
+                 <span className="text-[11px] text-pink-400 font-medium truncate max-w-[170px]">{item.heading}</span>
                )}
              </div>
           </div>
@@ -158,6 +177,21 @@ export function InstagramModal({
             </button>
           </div>
         </div>
+
+        {/* Tags bar if item has tags */}
+        {Array.isArray(item.tags) && item.tags.length > 0 && (
+          <div className="px-5 py-2 bg-pink-950/20 border-b border-pink-500/10 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 z-20">
+            <Tag className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+            {item.tags.map((tag: string, idx: number) => (
+              <span
+                key={idx}
+                className="text-[11px] px-2.5 py-0.5 rounded-full bg-pink-500/10 text-pink-300 font-medium whitespace-nowrap border border-pink-500/20"
+              >
+                #{tag.replace(/^#/, "")}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Content Container */}
         <div className="w-full flex-1 flex justify-center bg-black/20 rounded-b-2xl overflow-hidden shadow-[inset_0_20px_60px_rgba(0,0,0,0.5)] overflow-y-auto custom-scrollbar">

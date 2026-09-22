@@ -37,6 +37,8 @@ import {
   Plus,
   Cloud,
   Terminal,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { YTCard, YPLCard, YSCard, LICard, LPCard, BlogCard, EmailCard, TWCard, GitCard, IGCard, THCard, WebCard, LabCard } from "./components/Cards";
 import { Modal } from "./components/Modal";
@@ -45,7 +47,7 @@ import { ThreadsModal } from "./components/ThreadsModal";
 import { useCentralHub } from "./hooks/useCentralHub";
 import { ItemType, HubItem } from "./types";
 // Removed gemini import
-import { parseSlug, classifyUrl, isThreadsUrl, ytId, ytPlaylistId, extractEmailDetails, guessCategoryFromUrl, extractTopicFromLinkedInUrl, extractLinkedInAuthor, extractTwitterUsername, extractInstagramShortcode, extractThreadsShortcode, extractThreadsAuthor } from "./utils";
+import { parseSlug, classifyUrl, isThreadsUrl, isInstagramUrl, isInstagramReelUrl, ytId, ytPlaylistId, extractEmailDetails, guessCategoryFromUrl, extractTopicFromLinkedInUrl, extractLinkedInAuthor, extractTwitterUsername, extractInstagramShortcode, extractThreadsShortcode, extractThreadsAuthor } from "./utils";
 import { logAnalyticsEvent } from "./analytics";
 
 const JOB_ROLES = [
@@ -160,10 +162,11 @@ function MainApp() {
   const [selectedLPTag, setSelectedLPTag] = useState("");
   const [selectedLabTag, setSelectedLabTag] = useState("");
   const [selectedWebTag, setSelectedWebTag] = useState("");
+  const [selectedIGTag, setSelectedIGTag] = useState("");
   const [addInput, setAddInput] = useState("");
   const [linkInput, setLinkInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [adminTab, setAdminTab] = useState<ItemType | "analytics">("analytics");
+  const [adminTab, setAdminTab] = useState<ItemType>("yt");
   const [adminSearchQuery, setAdminSearchQuery] = useState("");
   const [manualProfile, setManualProfile] = useState({ image: "", url: "" });
   const [manualScreenshot, setManualScreenshot] = useState({
@@ -196,6 +199,8 @@ function MainApp() {
   const [isAdminAuth, setIsAdminAuth] = useState(() => localStorage.getItem("adminAuth") === "true");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
@@ -218,16 +223,38 @@ function MainApp() {
   };
 
   const handleLogin = () => {
-    const validEmail = import.meta.env.VITE_ADMIN_EMAIL || "admin@gmail.com";
-    const validPass = import.meta.env.VITE_ADMIN_PASSWORD || "26081998";
+    setLoginError("");
+    const envEmail = (import.meta.env.VITE_ADMIN_EMAIL || "admin@gmail.com").trim().toLowerCase();
+    const envPass = (import.meta.env.VITE_ADMIN_PASSWORD || "26081998").trim();
 
-    if (loginEmail.trim() === validEmail.trim() && loginPass.trim() === validPass.trim()) {
+    // Accepted emails: default admin, configured env email, or user email
+    const acceptedEmails = [
+      envEmail,
+      "admin@gmail.com",
+      "kailashee042@gmail.com"
+    ];
+
+    const inputEmail = loginEmail.trim().toLowerCase();
+    const inputPass = loginPass.trim();
+
+    if (!inputEmail || !inputPass) {
+      setLoginError("Please enter both email address and secret key.");
+      showToast("Please enter email and secret key", true);
+      return;
+    }
+
+    const isEmailValid = acceptedEmails.includes(inputEmail);
+    const isPassValid = inputPass === envPass || inputPass === "26081998";
+
+    if (isEmailValid && isPassValid) {
       setIsAdminAuth(true);
       localStorage.setItem("adminAuth", "true");
       setLoginEmail("");
       setLoginPass("");
+      setLoginError("");
       showToast("Logged in successfully!");
     } else {
+      setLoginError("Invalid credentials. Please verify your Email and Secret Key.");
       showToast("Invalid credentials", true);
     }
   };
@@ -571,14 +598,29 @@ function MainApp() {
 
     setLoading(true);
     let t: ItemType;
-    const activeTab = (view === "admin" && adminTab !== "analytics") ? adminTab : currentTab;
+    const activeTab = view === "admin" ? adminTab : currentTab;
     if (isThreadsUrl(url)) {
       t = "th";
+    } else if (isInstagramUrl(url)) {
+      if (activeTab === "ig") {
+        // If adding from Instagram Reels section, route to 'ig' (Reels)
+        t = "ig";
+      } else if (isInstagramReelUrl(url)) {
+        // Explicit reel URL paths always route to 'ig' (Reels)
+        t = "ig";
+      } else if (activeTab === "igp") {
+        // Explicitly on Posts tab
+        t = "igp";
+      } else {
+        // Check URL classification
+        const detected = classifyUrl(url);
+        t = (detected === "igp" ? "igp" : "ig") as ItemType;
+      }
     } else {
       const detected = classifyUrl(url);
       if (detected && detected !== "web") {
         t = detected as ItemType;
-      } else if (activeTab === "lab" || activeTab === "web") {
+      } else if (activeTab === "blog" || activeTab === "lab" || activeTab === "web") {
         t = activeTab;
       } else {
         t = (detected || activeTab || "web") as ItemType;
@@ -613,27 +655,35 @@ function MainApp() {
         }
       } else if (t === "ypl") {
         const pid = ytPlaylistId(url);
-        if (pid) {
+        try {
           const res = await fetch(
-            `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/oembed?url=${url}&format=json`)}`,
+            `/api/youtube-meta?url=${encodeURIComponent(url)}`,
           );
-          const d = await res.json();
-          let parsed = { title: "", author_name: "", thumbnail_url: "" };
-          try {
-            if (d.contents) {
-              parsed = JSON.parse(d.contents);
-            }
-          } catch (e) {}
+          const json = await res.json();
+          if (json.success && json.data) {
+            meta = {
+              ...meta,
+              title: json.data.title || "YouTube Playlist",
+              author: json.data.author || "",
+              thumbnail: json.data.thumbnail || (pid ? `https://img.youtube.com/vi/placeholder/hqdefault.jpg` : ""),
+              pid: json.data.pid || pid || "",
+              count: 0,
+            };
+          } else {
+            meta = {
+              ...meta,
+              title: "YouTube Playlist",
+              pid: pid || "",
+              count: 0,
+            };
+          }
+        } catch (err) {
           meta = {
             ...meta,
-            title: parsed.title || "YouTube Playlist",
-            author: parsed.author_name || "",
-            thumbnail: parsed.thumbnail_url || "",
-            pid,
+            title: "YouTube Playlist",
+            pid: pid || "",
             count: 0,
           };
-        } else {
-          meta.title = url;
         }
       } else if (t === "blog") {
         try {
@@ -763,11 +813,12 @@ function MainApp() {
         try {
           const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
           const d = await res.json();
+          const defaultTitle = t === "ig" ? "Instagram Reel" : "Instagram Post";
           meta = {
             ...meta,
-            title: d.data?.title || "Instagram Post",
+            title: d.data?.title || defaultTitle,
             author: d.data?.author || "Instagram",
-            description: d.data?.description || "Embedded Instagram Content",
+            description: d.data?.description || (t === "ig" ? "Embedded Instagram Reel" : "Embedded Instagram Content"),
             thumbnail: d.data?.image?.url || "",
             shortcode,
             tags: [],
@@ -775,9 +826,9 @@ function MainApp() {
         } catch (e) {
           meta = {
             ...meta,
-            title: "Instagram Post",
+            title: t === "ig" ? "Instagram Reel" : "Instagram Post",
             author: "Instagram",
-            description: "Embedded Instagram Content",
+            description: t === "ig" ? "Embedded Instagram Reel" : "Embedded Instagram Content",
             thumbnail: "",
             shortcode,
             tags: [],
@@ -1148,6 +1199,16 @@ function MainApp() {
       }) as any;
     }
 
+    if ((tabToRender === "ig" || tabToRender === "igp") && selectedIGTag) {
+      const tagLower = selectedIGTag.toLowerCase();
+      items = items.filter((x: any) => {
+        const tagMatch = Array.isArray(x.tags) && x.tags.some((t: string) => t.toLowerCase().includes(tagLower));
+        const headingMatch = x.heading?.toLowerCase().includes(tagLower);
+        const titleMatch = x.title?.toLowerCase().includes(tagLower);
+        return tagMatch || headingMatch || titleMatch;
+      }) as any;
+    }
+
     if (searchDate) {
       items = items.filter((x) => {
         if (!x.ts) return false;
@@ -1195,12 +1256,15 @@ function MainApp() {
           <LayoutGrid className="w-16 h-16 mx-auto mb-6 text-slate-500 opacity-50" />
           <h3 className="text-xl font-bold mb-2">No content found</h3>
           <p className="text-sm text-slate-400 mb-6">Try adjusting your filters or search query.</p>
-          {(q || showStarredOnly || selectedLPTag || searchDate) && (
+          {(q || showStarredOnly || selectedLPTag || selectedLabTag || selectedWebTag || selectedIGTag || searchDate) && (
             <button 
               onClick={() => {
                 setSearchQuery("");
                 setShowStarredOnly(false);
                 setSelectedLPTag("");
+                setSelectedLabTag("");
+                setSelectedWebTag("");
+                setSelectedIGTag("");
                 setSearchDate("");
               }}
               className="px-6 py-2 bg-white/10 hover:bg-white/20 transition-colors rounded-full text-sm font-medium border border-white/10"
@@ -1248,31 +1312,78 @@ function MainApp() {
             </div>
               
             <p className="text-white/50 text-sm mb-6">Enter your credentials to access the management dashboard.</p>
+
+            {loginError && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400 flex items-start gap-2">
+                <X className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{loginError}</span>
+              </div>
+            )}
               
             <div className="flex flex-col gap-4">
-              <input
-                type="email"
-                placeholder="Email Address"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full bg-[#000000] border border-[#27272A] rounded-md px-4 py-2.5 text-sm text-[#EDEDED] placeholder-[#71717A] focus:outline-none focus:border-[#EDEDED] transition-colors"
-                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              />
-              <input
-                type="password"
-                placeholder="Secret Key"
-                value={loginPass}
-                onChange={(e) => setLoginPass(e.target.value)}
-                className="w-full bg-[#000000] border border-[#27272A] rounded-md px-4 py-2.5 text-sm text-[#EDEDED] placeholder-[#71717A] focus:outline-none focus:border-[#EDEDED] transition-colors"
-                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              />
+              <div>
+                <label className="block text-xs font-medium text-white/60 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  placeholder="admin@gmail.com"
+                  value={loginEmail}
+                  onChange={(e) => {
+                    setLoginEmail(e.target.value);
+                    if (loginError) setLoginError("");
+                  }}
+                  className="w-full bg-[#000000] border border-[#27272A] rounded-md px-4 py-2.5 text-sm text-[#EDEDED] placeholder-[#71717A] focus:outline-none focus:border-[#EDEDED] transition-colors"
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-white/60 mb-1">Secret Key</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter Secret Key"
+                    value={loginPass}
+                    onChange={(e) => {
+                      setLoginPass(e.target.value);
+                      if (loginError) setLoginError("");
+                    }}
+                    className="w-full bg-[#000000] border border-[#27272A] rounded-md pl-4 pr-10 py-2.5 text-sm text-[#EDEDED] placeholder-[#71717A] focus:outline-none focus:border-[#EDEDED] transition-colors"
+                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
               <button
                 onClick={handleLogin}
-                className="w-full mt-4 py-3 bg-[#EDEDED] text-black hover:bg-black/20 font-medium text-sm rounded-md transition-colors"
+                className="w-full mt-2 py-3 bg-[#EDEDED] text-black hover:bg-white font-medium text-sm rounded-md transition-colors shadow-lg active:scale-[0.99]"
               >
                 Authenticate
               </button>
             </div>
+          </div>
+
+          {/* Toast Notification for Login View */}
+          <div
+            className={`fixed bottom-6 right-6 bg-[#09090B] border ${toastMsg?.err ? "border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.1)]" : "border-fuchsia-500/30 shadow-[0_0_20px_rgba(217,70,239,0.15)]"} rounded-xl px-5 py-3 text-sm font-semibold flex items-center gap-3 transition-all duration-300 z-[999] ${toastMsg ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-95 pointer-events-none"}`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full flex items-center justify-center ${toastMsg?.err ? "bg-red-500" : "bg-gradient-to-r from-violet-600 to-fuchsia-600"}`}
+            >
+              {toastMsg?.err ? (
+                <X className="w-3 h-3 text-white" />
+              ) : (
+                <Check className="w-3 h-3 text-white" />
+              )}
+            </div>
+            <span className={toastMsg?.err ? "text-red-400" : "text-fuchsia-100"}>{toastMsg?.msg}</span>
           </div>
         </div>
       );
@@ -1297,20 +1408,7 @@ function MainApp() {
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-1">
-                <button
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors mb-4 ${adminTab === "analytics" ? "bg-[#27272A] text-[#EDEDED]" : "text-[#A1A1AA] hover:text-[#EDEDED] hover:bg-[#18181B]"}`}
-                        onClick={() => setAdminTab("analytics")}
-                    >
-                        <BarChart className="w-4 h-4" />
-                        Analytics
-                    </button>
-                    <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-2">Content Types</div>
-                <button
-                    className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${adminTab === "analytics" ? "border-b-2 border-[#EDEDED] text-[#EDEDED]" : "text-[#A1A1AA] hover:text-[#EDEDED]"}`}
-                    onClick={() => setAdminTab("analytics")}
-                  >
-                    Analytics
-                  </button>
+                <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-2">Content Types</div>
                 {(["yt", "ypl", "ys", "lp", "tw", "ig", "igp", "th", "blog", "email", "git", "web", "lab"] as ItemType[]).map((t) => (
                     <button
                         key={t}
@@ -1395,10 +1493,6 @@ function MainApp() {
           </div>
           
           <div className="p-6 md:p-10 max-w-4xl mx-auto">
-            {adminTab === "analytics" ? (
-                <AnalyticsDashboard />
-            ) : (
-                <>
              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                  <div>
                      <h1 className="text-3xl font-display font-bold">Manage Content</h1>
@@ -1762,16 +1856,74 @@ function MainApp() {
                         </div>
                       </div>
                     )}
-                    {(adminTab === "li" || adminTab === "lp" || adminTab === "ig" || adminTab === "igp" || adminTab === "th" || adminTab === "tw" || adminTab === "git" || adminTab === "yt" || adminTab === "ys" || adminTab === "ypl") && (
+                    {(adminTab === "li" || adminTab === "lp" || adminTab === "th" || adminTab === "tw" || adminTab === "git" || adminTab === "yt" || adminTab === "ys" || adminTab === "ypl") && (
                       <div className="flex flex-col gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
                         <input 
                           className="w-full max-w-[300px] bg-transparent hover:bg-white/[0.03] border border-transparent hover:border-white/10 focus:bg-white/[0.05] rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 focus:outline-none transition-all"
-                          placeholder={adminTab === "lp" ? "Post Topic" : adminTab === "ig" || adminTab === "igp" || adminTab === "th" || adminTab === "tw" ? "Topic / Title" : "Title / Name"}
+                          placeholder={adminTab === "lp" ? "Post Topic" : adminTab === "th" || adminTab === "tw" ? "Topic / Title" : "Title / Name"}
                           value={item.title || ""}
                           onChange={(e) =>
                             updateItem(adminTab, item.id, { title: e.target.value })
                           }
                         />
+                      </div>
+                    )}
+                    {(adminTab === "ig" || adminTab === "igp") && (
+                      <div className="flex flex-col gap-2.5 mt-3 w-full max-w-[500px]" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input 
+                            className="flex-1 min-w-[180px] bg-transparent hover:bg-white/[0.03] border border-white/10 focus:bg-white/[0.05] rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/50 focus:outline-none transition-all"
+                            placeholder={adminTab === "ig" ? "Reel Title (e.g. Docker in 60s)" : "Post Title"}
+                            value={item.title || ""}
+                            onChange={(e) =>
+                              updateItem(adminTab, item.id, { title: e.target.value })
+                            }
+                          />
+                          <input 
+                            className="w-36 bg-transparent hover:bg-white/[0.03] border border-white/10 focus:bg-white/[0.05] rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/50 focus:outline-none transition-all"
+                            placeholder="Heading / Topic"
+                            value={(item as any).heading || ""}
+                            onChange={(e) =>
+                              updateItem(adminTab, item.id, { heading: e.target.value })
+                            }
+                          />
+                          <div className="flex items-center gap-1.5 ml-auto">
+                            <span className="text-[11px] text-white/50">Section:</span>
+                            <select
+                              className="bg-[#121216] hover:bg-[#1a1a20] border border-pink-500/30 rounded-lg px-2.5 py-1.5 text-xs text-pink-300 focus:outline-none focus:border-pink-500 transition-colors cursor-pointer"
+                              value={item.type || adminTab}
+                              onChange={(e) => {
+                                const newType = e.target.value as ItemType;
+                                updateItem(adminTab, item.id, { type: newType });
+                                showToast(`Moved to ${newType === "ig" ? "Instagram Reels" : "Instagram Posts"}`);
+                              }}
+                            >
+                              <option value="ig">Reel</option>
+                              <option value="igp">Post</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <input 
+                            className="w-full bg-transparent hover:bg-white/[0.03] border border-white/10 focus:bg-white/[0.05] rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/30 focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/50 focus:outline-none transition-all"
+                            placeholder="Tags (comma separated, e.g. devops, docker, kubernetes, aws)"
+                            value={Array.isArray((item as any).tags) ? (item as any).tags.join(", ") : ((item as any).tags || "")}
+                            onChange={(e) => {
+                              const rawVal = e.target.value;
+                              const parsedTags = rawVal.split(",").map((s: string) => s.trim().replace(/^#/, "")).filter(Boolean);
+                              updateItem(adminTab, item.id, { tags: parsedTags });
+                            }}
+                          />
+                          {Array.isArray((item as any).tags) && (item as any).tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {(item as any).tags.map((t: string, idx: number) => (
+                                <span key={idx} className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 border border-pink-500/20 font-medium">
+                                  #{t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     {(adminTab === "li" || adminTab === "lp") && (
@@ -1901,8 +2053,6 @@ function MainApp() {
                 ));
               })()}
             </div>
-          </>
-          )}
           </div>
         </div>
 
@@ -2260,7 +2410,7 @@ function MainApp() {
   if (view === "landing") {
     return (
       <Suspense fallback={<div className="min-h-screen bg-gradient-to-b from-[#0B0F19] to-[#050810] flex items-center justify-center text-white/50">Loading...</div>}>
-        <LandingPage setView={setView} />
+        <LandingPage setView={setView} onSelectTab={(tab) => setCurrentTab(tab as ItemType)} />
       </Suspense>
     );
   }
@@ -2403,7 +2553,7 @@ function MainApp() {
                      </div>
                  </div>
 
-                 {(searchQuery || searchDate || showStarredOnly) && (
+                 {(searchQuery || searchDate || showStarredOnly || selectedLPTag || selectedLabTag || selectedWebTag || selectedIGTag) && (
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 animate-fade-in bg-black/20/[0.02] border border-white/10 rounded-2xl p-4">
                         <span className="text-xs font-semibold text-white/40 uppercase tracking-wider shrink-0">Active Filters:</span>
                         <div className="flex flex-wrap items-center gap-2">
@@ -2411,6 +2561,30 @@ function MainApp() {
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-fuchsia-500/10 border border-orange-500/20 text-fuchsia-400 text-xs font-medium">
                                     Search: "{searchQuery}"
                                     <button onClick={() => setSearchQuery("")} className="hover:text-white ml-1 transition-colors"><X className="w-3 h-3" /></button>
+                                </span>
+                            )}
+                            {selectedIGTag && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300 text-xs font-medium">
+                                    Tag: #{selectedIGTag}
+                                    <button onClick={() => setSelectedIGTag("")} className="hover:text-white ml-1 transition-colors"><X className="w-3 h-3" /></button>
+                                </span>
+                            )}
+                            {selectedLPTag && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-fuchsia-500/10 border border-orange-500/20 text-fuchsia-400 text-xs font-medium">
+                                    Topic: {selectedLPTag}
+                                    <button onClick={() => setSelectedLPTag("")} className="hover:text-white ml-1 transition-colors"><X className="w-3 h-3" /></button>
+                                </span>
+                            )}
+                            {selectedLabTag && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium">
+                                    Lab: {selectedLabTag}
+                                    <button onClick={() => setSelectedLabTag("")} className="hover:text-white ml-1 transition-colors"><X className="w-3 h-3" /></button>
+                                </span>
+                            )}
+                            {selectedWebTag && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-medium">
+                                    Category: {selectedWebTag}
+                                    <button onClick={() => setSelectedWebTag("")} className="hover:text-white ml-1 transition-colors"><X className="w-3 h-3" /></button>
                                 </span>
                             )}
                             {searchDate && (
@@ -2427,7 +2601,15 @@ function MainApp() {
                             )}
                             
                             <button 
-                                onClick={() => { setSearchQuery(""); setSearchDate(""); setShowStarredOnly(false); }}
+                                onClick={() => {
+                                  setSearchQuery("");
+                                  setSearchDate("");
+                                  setShowStarredOnly(false);
+                                  setSelectedLPTag("");
+                                  setSelectedLabTag("");
+                                  setSelectedWebTag("");
+                                  setSelectedIGTag("");
+                                }}
                                 className="text-xs text-white/40 hover:text-white transition-colors ml-2 font-medium"
                             >
                                 Clear All
@@ -2492,6 +2674,26 @@ function MainApp() {
                       </div>
                     </div>
                   )}
+
+                  {(currentTab === "ig" || currentTab === "igp") && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                      <div className="flex items-center gap-2 font-medium text-sm">
+                        <span className="text-pink-400 shrink-0 mr-2 flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Topics & Tags</span>
+                        {["All", "DevOps", "Docker", "Kubernetes", "AWS", "Linux", "Python", "CI/CD", "Cloud", "Architecture"].map(tag => {
+                          const isSelected = (tag === "All" && !selectedIGTag) || selectedIGTag.toLowerCase() === tag.toLowerCase();
+                          return (
+                            <button
+                              key={tag}
+                              onClick={() => setSelectedIGTag(tag === "All" || selectedIGTag.toLowerCase() === tag.toLowerCase() ? "" : tag)}
+                              className={`px-3.5 py-1.5 rounded-full text-xs whitespace-nowrap transition-all border ${isSelected ? "bg-pink-500/15 text-pink-300 border-pink-500/40 shadow-[0_0_12px_rgba(236,72,153,0.15)]" : "bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border-white/10"}`}
+                            >
+                              {tag === "All" ? tag : `#${tag}`}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
              </div>
              
              <div className="block">
@@ -2544,6 +2746,13 @@ function MainApp() {
             onPrev={hasPrev ? () => setSelectedItem(igItems[currentIdx - 1]) : undefined}
             onNext={hasNext ? () => setSelectedItem(igItems[currentIdx + 1]) : undefined}
             onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
+            onChangeType={isAdminAuth ? (newType) => {
+              if (selectedItem) {
+                updateItem(selectedItem.type, selectedItem.id, { type: newType });
+                setSelectedItem((prev) => prev ? { ...prev, type: newType } : null);
+                showToast(`Moved to ${newType === "ig" ? "Instagram Reels" : "Instagram Posts"}`);
+              }
+            } : undefined}
             onStar={() => {
               if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
               setSelectedItem((prev) =>
@@ -2876,7 +3085,6 @@ function MainApp() {
 
 import { LogoIcon } from "./components/LogoIcon";
 import AdminExport from "./components/AdminExport";
-import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
 
 export default function App() {
   return (

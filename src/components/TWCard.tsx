@@ -1,5 +1,5 @@
 import React from "react";
-import { Star, Copy, ExternalLink, Twitter } from "lucide-react";
+import { Star, Copy, ExternalLink, Twitter, Maximize2, ArrowUpRight } from "lucide-react";
 import { extractTwitterUsername, shortenUrl, getTwitterEmbedUrl } from "../utils";
 
 export function TWCard({ item, onStar, onCopy, onClick, showToast }: any) {
@@ -97,6 +97,19 @@ export function TWCard({ item, onStar, onCopy, onClick, showToast }: any) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Clickable footer affordance */}
+      <div 
+        onClick={onClick}
+        className="p-2.5 px-3 bg-[#16181c] border-t border-[#2f3336] flex items-center justify-between text-xs text-[#1d9bf0] hover:bg-[#1d2226] transition-colors cursor-pointer shrink-0 z-20"
+      >
+        <span className="flex items-center gap-1.5 font-semibold text-white/90">
+          <Maximize2 className="w-3.5 h-3.5 text-[#1d9bf0]" /> Pop up to see full post & notes
+        </span>
+        <span className="text-[11px] text-[#1d9bf0] flex items-center gap-0.5">
+          Expand <ArrowUpRight className="w-3 h-3" />
+        </span>
       </div>
       </div>
     </div>

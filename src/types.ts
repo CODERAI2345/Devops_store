@@ -82,12 +82,14 @@ export interface GitItem extends BaseItem {
 export interface IGItem extends BaseItem {
   type: "ig";
   shortcode?: string;
+  heading?: string;
   tags?: string[];
 }
 
 export interface IGPItem extends BaseItem {
   type: "igp";
   shortcode?: string;
+  heading?: string;
   tags?: string[];
 }
 

@@ -143,6 +143,7 @@ export function ThreadsMediaCarousel({
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState<{ [key: number]: boolean }>({});
   const [mediaErrors, setMediaErrors] = useState<{ [key: number]: boolean }>({});
+  const [proxyAttempted, setProxyAttempted] = useState<{ [key: number]: boolean }>({});
   const [fullscreenMedia, setFullscreenMedia] = useState<ThreadsMediaItem | null>(null);
 
   const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({});
@@ -321,6 +322,8 @@ export function ThreadsMediaCarousel({
         <div className="flex h-full touch-pan-y">
           {mediaList.map((media, idx) => {
             const isError = mediaErrors[idx];
+            const isProxied = !!proxyAttempted[idx];
+            const effectiveUrl = isProxied ? `/api/image-proxy?url=${encodeURIComponent(media.url)}` : media.url;
 
             return (
               <div
@@ -336,23 +339,24 @@ export function ThreadsMediaCarousel({
                 {media.type === "image" && !isError && (
                   <div
                     className="absolute inset-0 bg-cover bg-center blur-2xl opacity-20 scale-125 pointer-events-none transform transition-opacity duration-700"
-                    style={{ backgroundImage: `url(${media.url})` }}
+                    style={{ backgroundImage: `url(${effectiveUrl})` }}
                   />
                 )}
 
                 {/* Media Content */}
                 {isError ? (
                   <div className="relative z-10 flex flex-col items-center justify-center p-6 text-center max-w-[280px]">
-                    <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-2">
-                      <AlertCircle className="w-5 h-5 text-red-400" />
+                    <div className="w-10 h-10 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-2">
+                      <span className="text-violet-400 font-bold text-sm">@</span>
                     </div>
-                    <span className="text-xs text-white/70 font-medium">Attachment unavailable</span>
+                    <span className="text-xs text-white/80 font-medium">Threads Post Attachment</span>
+                    <p className="text-[11px] text-white/50 mt-1 line-clamp-2">{item.title || "View on Threads"}</p>
                     <a
                       href={item.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="mt-3 text-[11px] text-fuchsia-400 hover:text-fuchsia-300 flex items-center gap-1 underline"
+                      className="mt-3 text-[11px] text-violet-400 hover:text-violet-300 flex items-center gap-1 underline"
                     >
                       View on Threads <ExternalLink className="w-3 h-3" />
                     </a>
@@ -402,10 +406,17 @@ export function ThreadsMediaCarousel({
                 ) : (
                   <div className="relative w-full h-full flex items-center justify-center">
                     <img
-                      src={media.url}
+                      src={effectiveUrl}
                       alt={media.alt || "Threads photo"}
                       loading="lazy"
-                      onError={() => setMediaErrors((prev) => ({ ...prev, [idx]: true }))}
+                      referrerPolicy="no-referrer"
+                      onError={() => {
+                        if (!isProxied) {
+                          setProxyAttempted((prev) => ({ ...prev, [idx]: true }));
+                        } else {
+                          setMediaErrors((prev) => ({ ...prev, [idx]: true }));
+                        }
+                      }}
                       className={`w-full h-full transition-transform duration-500 ${
                         variant === "card"
                           ? "object-cover object-center group-hover/carousel:scale-[1.02]"
@@ -509,6 +520,13 @@ export function ThreadsMediaCarousel({
               <img
                 src={fullscreenMedia.url}
                 alt="Full size media"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.includes("/api/image-proxy")) {
+                    target.src = `/api/image-proxy?url=${encodeURIComponent(fullscreenMedia.url)}`;
+                  }
+                }}
                 className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
               />
             )}
