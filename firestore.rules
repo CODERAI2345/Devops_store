@@ -2,29 +2,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // ===============================================================
-    // Assumed Data Model
+    // Global Helper Functions
     // ===============================================================
-    // Collection: public_items
-    // Document ID: {itemId} (stringified number)
-    // Fields:
-    //   - id: number (required)
-    //   - type: string (required, enum: 'yt', 'ys', 'li', 'lp', 'job', 'blog', 'email')
-    //   - url: string (required)
-    //   - title: string (required)
-    //   - author: string (optional)
-    //   - description: string (optional)
-    //   - tags: list of strings (optional)
-    //   - starred: boolean (optional)
-    //   - company: string (optional)
-    //   - email: string (optional)
-    //   - location: string (optional)
-    //   - role: string (optional)
-    //   - thumbnail: string (optional)
-    //   - vid: string (optional)
-    //   - date: string (optional)
-    //   - ts: number (required)
-    //   - platform: string (optional)
-    // ===============================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
 
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
@@ -45,15 +31,16 @@ service cloud.firestore {
     function isValidItem() {
       let data = request.resource.data;
       return hasRequiredFields(['id', 'type', 'url', 'title', 'ts']) &&
-             data.id is number &&
+             (data.id is number || data.id is string) &&
              data.type in ['yt', 'ys', 'li', 'lp', 'job', 'blog', 'email', 'hremail', 'ypl', 'tw', 'git', 'ig', 'igp', 'th', 'lab', 'web'] &&
              isValidString(data.url, 10000) &&
              (data.title is string || data.title == null) &&
-             data.ts is number &&
+             (data.ts is number || data.ts is string) &&
              isValidOptionalString('author', 2000) &&
              isValidOptionalString('description', 20000) &&
              (!( 'tags' in data ) || isValidTags(data.tags)) &&
              (!( 'starred' in data ) || data.starred is bool) &&
+             (!( 'isProtected' in data ) || data.isProtected is bool) &&
              isValidOptionalString('company', 2000) &&
              isValidOptionalString('email', 2000) &&
              isValidOptionalString('location', 2000) &&
@@ -66,16 +53,87 @@ service cloud.firestore {
              isValidOptionalString('heading', 2000) &&
              isValidOptionalString('shortcode', 2000) &&
              isValidOptionalString('videoUrl', 10000) &&
+             isValidOptionalString('pid', 1000) &&
+             isValidOptionalString('progressStatus', 100) &&
+             isValidOptionalString('difficulty', 1000) &&
+             isValidOptionalString('duration', 1000) &&
+             isValidOptionalString('domain', 2000) &&
+             isValidOptionalString('favicon', 5000) &&
+             isValidOptionalString('notes', 10000) &&
+             isValidOptionalString('postType', 1000) &&
+             isValidOptionalString('language', 1000) &&
+             (!( 'stars' in data ) || data.stars is number) &&
+             (!( 'forks' in data ) || data.forks is number) &&
+             (!( 'skills' in data ) || isValidTags(data.skills)) &&
+             (!( 'topics' in data ) || isValidTags(data.topics)) &&
+             (!( 'count' in data ) || data.count is number || data.count is string) &&
+             (!( 'videoList' in data ) || data.videoList is list) &&
              (!( 'images' in data ) || data.images is list) &&
              (!( 'videos' in data ) || data.videos is list) &&
              (!( 'media' in data ) || data.media is list);
     }
 
+    // ===============================================================
+    // 1. Public Items (Read Public, Write Validated)
+    // ===============================================================
     match /public_items/{itemId} {
       allow read: if true;
       allow create: if isValidItem();
       allow update: if isValidItem();
       allow delete: if true;
+    }
+
+    // ===============================================================
+    // 2. User Profiles (Strict User Ownership RLS)
+    // ===============================================================
+    match /user_profiles/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId)
+                    && request.resource.data.uid == userId
+                    && isValidString(request.resource.data.name, 200)
+                    && request.resource.data.provider in ['github', 'google', 'phone', 'password']
+                    && isValidOptionalString('mobile_number', 50);
+      allow update: if isOwner(userId)
+                    && request.resource.data.uid == userId
+                    && isValidString(request.resource.data.name, 200)
+                    && isValidOptionalString('mobile_number', 50);
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // 3. User Progress (Strict User Ownership RLS)
+    // ===============================================================
+    match /user_progress/{progressId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update: if isSignedIn() 
+                            && request.resource.data.userId == request.auth.uid
+                            && (request.resource.data.completed is bool)
+                            && (progressId.size() <= 128);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // 4. User Bookmarks (Strict User Ownership RLS)
+    // ===============================================================
+    match /user_bookmarks/{bookmarkId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() 
+                    && request.resource.data.userId == request.auth.uid
+                    && (bookmarkId.size() <= 128);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // 5. Analytics (Append-Only Event Stream)
+    // ===============================================================
+    match /analytics/{eventId} {
+      allow create: if request.resource.data.eventType in [
+                      'view', 'like', 'tab_click', 'copy',
+                      'page_view', 'signup_completed', 'login',
+                      'logout', 'topic_completed', 'bookmark_added'
+                    ]
+                    && request.resource.data.sessionId is string;
+      allow read: if true;
     }
   }
 }

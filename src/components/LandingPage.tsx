@@ -1,7 +1,9 @@
 import { PipelineAnimation } from "./PipelineAnimation";
-import React, { useState } from 'react';
-import { motion } from "motion/react";
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from "motion/react";
 import { LogoIcon } from './LogoIcon';
+import { UserNav } from './UserNav';
+import { useAuth } from '../context/AuthContext';
 import { K8sPods, Terminal, Pipeline, CloudTraffic } from './DevOpsAnimations';
 import {
   AwsLogo,
@@ -177,8 +179,97 @@ function StaggerItem({ children, className = "" }: { children: React.ReactNode, 
   );
 }
 
+const HERO_ROTATING_WORDS = ["Engineers", "Architects", "Builders", "Specialists", "Practitioners"];
+
+export function WordScrollFade({
+  words = HERO_ROTATING_WORDS,
+  duration = 2600,
+  className = "",
+}: {
+  words?: string[];
+  duration?: number;
+  className?: string;
+}) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex((prev) => (prev + 1) % words.length);
+    }, duration);
+    return () => clearInterval(interval);
+  }, [words.length, duration]);
+
+  return (
+    <span className={`inline-block relative overflow-hidden align-baseline ${className}`}>
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={words[index]}
+          initial={{ opacity: 0, y: 22, filter: "blur(4px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -22, filter: "blur(4px)" }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="inline-block bg-gradient-to-r from-amber-300 via-fuchsia-300 to-violet-300 bg-clip-text text-transparent underline decoration-fuchsia-400/40 decoration-2 underline-offset-8"
+        >
+          {words[index]}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
 export default function LandingPage({ setView, onSelectTab }: { setView: (v: string) => void; onSelectTab?: (tab: string) => void }) {
+  const { user, openAuthModal } = useAuth();
+  const [pendingTargetTab, setPendingTargetTab] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterFeedback, setNewsletterFeedback] = useState<{ msg: string; err?: boolean } | null>(null);
+
+  // If user signs in after requesting to browse library, automatically navigate to feed
+  React.useEffect(() => {
+    if (user && pendingTargetTab !== null) {
+      if (pendingTargetTab && onSelectTab) {
+        onSelectTab(pendingTargetTab);
+      }
+      setView('feed');
+      setPendingTargetTab(null);
+    }
+  }, [user, pendingTargetTab, onSelectTab, setView]);
+
+  const handleBrowseLibrary = (targetTab: string = '') => {
+    if (!user) {
+      setPendingTargetTab(targetTab || '');
+      openAuthModal('login', 'Please sign in with GitHub, Google, or your Mobile number to access the free DevOps library.');
+      return;
+    }
+    if (targetTab && onSelectTab) {
+      onSelectTab(targetTab);
+    }
+    setView('feed');
+  };
+
+  // Close mobile menu on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && mobileMenu) {
+        setMobileMenu(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenu]);
+
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = newsletterEmail.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setNewsletterFeedback({ msg: "Please enter a valid email address.", err: true });
+      setTimeout(() => setNewsletterFeedback(null), 3500);
+      return;
+    }
+    setNewsletterFeedback({ msg: "Thanks for subscribing to DevOps updates!", err: false });
+    setNewsletterEmail("");
+    setTimeout(() => setNewsletterFeedback(null), 4000);
+  };
 
   return (
     <main className="min-h-screen overflow-hidden bg-gradient-to-b from-[#0B0F19] to-[#050810] text-white">
@@ -213,8 +304,15 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
           </div>
 
           <div className="hidden items-center gap-4 md:flex">
-            <button className="rounded-full border border-white/10 p-3 text-slate-100 hover:bg-white/[0.03]">
-              <Sun size={18} />
+            <UserNav />
+
+            <button
+              onClick={() => setView('admin')}
+              title="Admin Dashboard"
+              aria-label="Admin Dashboard"
+              className="rounded-full border border-white/10 p-3 text-slate-100 hover:bg-white/[0.03] transition-colors cursor-pointer"
+            >
+              <Settings size={18} />
             </button>
 
             <div className="relative inline-flex group rounded-xl">
@@ -222,8 +320,8 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
                 <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#1e1b4b_0%,#1e1b4b_50%,#e879f9_80%,#ffffff_100%)] opacity-90" />
               </div>
               <button
-                onClick={() => setView('feed')}
-                className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-5 py-3 text-sm font-semibold transition hover:from-violet-800 hover:to-fuchsia-800 shadow-lg shadow-fuchsia-900/30"
+                onClick={() => handleBrowseLibrary()}
+                className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-5 py-3 text-sm font-semibold transition hover:from-violet-800 hover:to-fuchsia-800 shadow-lg shadow-fuchsia-900/30 cursor-pointer"
               >
                 Browse Free Library <ArrowRight size={16} className="text-fuchsia-300" />
               </button>
@@ -232,25 +330,39 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
 
           <button
             onClick={() => setMobileMenu(!mobileMenu)}
-            className="md:hidden"
+            aria-label="Toggle mobile menu"
+            className="md:hidden p-2 text-slate-100 hover:text-white"
           >
-            {mobileMenu ? <X /> : <Menu />}
+            {mobileMenu ? <X size={24} /> : <Menu size={24} />}
           </button>
         </nav>
 
         {mobileMenu && (
-          <div className="border-t border-white/10 bg-[#0d1128] px-6 py-6 md:hidden">
+          <div className="border-t border-white/10 bg-[#0d1128] px-6 py-6 md:hidden animate-in fade-in slide-in-from-top-4 duration-200">
             <div className="flex flex-col gap-5 text-slate-100">
-              <a href="#domains" onClick={() => setMobileMenu(false)}>Domains</a>
-              <a href="#overview" onClick={() => setMobileMenu(false)}>What's Inside</a>
-              <a href="#architecture" onClick={() => setMobileMenu(false)}>AWS Architecture</a>
-              <a href="#learn" onClick={() => setMobileMenu(false)}>Why CentralHub</a>
+              <div className="pb-3 border-b border-white/10 flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-white/50">Your Account</span>
+                <UserNav />
+              </div>
+              <a href="#domains" onClick={() => setMobileMenu(false)} className="hover:text-fuchsia-400 transition-colors">Domains</a>
+              <a href="#overview" onClick={() => setMobileMenu(false)} className="hover:text-fuchsia-400 transition-colors">What's Inside</a>
+              <a href="#architecture" onClick={() => setMobileMenu(false)} className="hover:text-fuchsia-400 transition-colors">AWS Architecture</a>
+              <a href="#learn" onClick={() => setMobileMenu(false)} className="hover:text-fuchsia-400 transition-colors">Why CentralHub</a>
               <button
                 onClick={() => {
                   setMobileMenu(false);
-                  setView('feed');
+                  setView('admin');
                 }}
-                className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 text-sm font-semibold text-white transition hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-fuchsia-900/30"
+                className="flex items-center gap-2 text-left text-slate-300 hover:text-white transition-colors"
+              >
+                <Settings size={16} /> Admin Portal
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenu(false);
+                  handleBrowseLibrary();
+                }}
+                className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 text-sm font-semibold text-white transition hover:from-violet-500 hover:to-fuchsia-500 shadow-lg shadow-fuchsia-900/30 cursor-pointer"
               >
                 Browse Free Library <ArrowRight size={16} />
               </button>
@@ -276,9 +388,10 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
             <StaggerItem className="max-w-4xl text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[1.1] tracking-tight">
               <span>The Complete Knowledge Hub for</span>
               <br />
-              <span className="bg-gradient-to-r from-fuchsia-400 via-violet-400 to-amber-300 bg-clip-text text-transparent block mt-2">
-                DevOps & Cloud Engineers
-              </span>
+              <span className="bg-gradient-to-r from-fuchsia-400 via-violet-400 to-amber-300 bg-clip-text text-transparent inline-block mt-2">
+                DevOps & Cloud{" "}
+              </span>{" "}
+              <WordScrollFade words={["Engineers", "Architects", "Builders", "Specialists", "Practitioners"]} />
             </StaggerItem>
 
             <StaggerItem>
@@ -295,8 +408,8 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
                 </div>
                 {/* Inner Button */}
                 <button
-                  onClick={() => setView('feed')}
-                  className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:from-violet-800 hover:to-fuchsia-800 shadow-xl"
+                  onClick={() => handleBrowseLibrary()}
+                  className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:from-violet-800 hover:to-fuchsia-800 shadow-xl cursor-pointer"
                 >
                   Browse Free Library <ArrowRight size={16} className="text-fuchsia-300" />
                 </button>
@@ -390,8 +503,8 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
             </div>
 
             <button
-              onClick={() => setView('feed')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-sm font-semibold text-white transition-all w-fit"
+              onClick={() => handleBrowseLibrary()}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-sm font-semibold text-white transition-all w-fit cursor-pointer"
             >
               Open Live Resource Desk <ArrowRight className="w-4 h-4 text-fuchsia-400" />
             </button>
@@ -400,7 +513,9 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {/* Card 1: Cloud Architecture */}
             <div
-              onClick={() => setView('architecture')}
+              onClick={() => {
+                document.getElementById('architecture')?.scrollIntoView({ behavior: 'smooth' });
+              }}
               className="group cursor-pointer rounded-2xl border border-orange-500/20 bg-gradient-to-b from-orange-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/40 hover:shadow-[0_8px_30px_rgba(249,115,22,0.12)]"
             >
               <div className="flex items-center justify-between mb-4">
@@ -421,10 +536,7 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
 
             {/* Card 2: GitHub IaC */}
             <div
-              onClick={() => {
-                if (onSelectTab) onSelectTab('git');
-                setView('feed');
-              }}
+              onClick={() => handleBrowseLibrary('git')}
               className="group cursor-pointer rounded-2xl border border-purple-500/20 bg-gradient-to-b from-purple-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/40 hover:shadow-[0_8px_30px_rgba(168,85,247,0.12)]"
             >
               <div className="flex items-center justify-between mb-4">
@@ -443,36 +555,47 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
               </p>
             </div>
 
-            {/* Card 3: Video Tutorials */}
+            {/* Card 3: Video Tutorials & Playlists */}
             <div
-              onClick={() => {
-                if (onSelectTab) onSelectTab('yt');
-                setView('feed');
-              }}
+              onClick={() => handleBrowseLibrary('ypl')}
               className="group cursor-pointer rounded-2xl border border-red-500/20 bg-gradient-to-b from-red-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-red-500/40 hover:shadow-[0_8px_30px_rgba(239,68,68,0.12)]"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
                   <Youtube className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500/10 text-red-300 border border-red-500/20">
-                  Deep-Dives
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleBrowseLibrary('ypl');
+                    }}
+                    className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500/20 text-red-200 border border-red-500/30 hover:bg-red-500/30 cursor-pointer"
+                  >
+                    Playlists
+                  </span>
+                  <span 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleBrowseLibrary('yt');
+                    }}
+                    className="text-xs font-semibold px-2 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 cursor-pointer"
+                  >
+                    Videos
+                  </span>
+                </div>
               </div>
               <h3 className="text-lg font-bold text-white group-hover:text-red-300 transition-colors">
-                YouTube Guides & Shorts
+                YouTube Playlists & Guides
               </h3>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                Handpicked video breakdowns covering system design, cloud failure scenarios, debugging sessions, and Kubernetes tips.
+                Handpicked course playlists and video breakdowns covering system design, cloud failure scenarios, debugging sessions, and Kubernetes tips.
               </p>
             </div>
 
             {/* Card 4: Recruiter Emails */}
             <div
-              onClick={() => {
-                if (onSelectTab) onSelectTab('email');
-                setView('feed');
-              }}
+              onClick={() => handleBrowseLibrary('email')}
               className="group cursor-pointer rounded-2xl border border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-fuchsia-500/40 hover:shadow-[0_8px_30px_rgba(217,70,239,0.12)]"
             >
               <div className="flex items-center justify-between mb-4">
@@ -493,10 +616,7 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
 
             {/* Card 5: Technical Blogs */}
             <div
-              onClick={() => {
-                if (onSelectTab) onSelectTab('blog');
-                setView('feed');
-              }}
+              onClick={() => handleBrowseLibrary('blog')}
               className="group cursor-pointer rounded-2xl border border-cyan-500/20 bg-gradient-to-b from-cyan-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/40 hover:shadow-[0_8px_30px_rgba(6,182,212,0.12)]"
             >
               <div className="flex items-center justify-between mb-4">
@@ -517,10 +637,7 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
 
             {/* Card 6: Interactive Cheatsheets */}
             <div
-              onClick={() => {
-                if (onSelectTab) onSelectTab('lab');
-                setView('feed');
-              }}
+              onClick={() => handleBrowseLibrary('lab')}
               className="group cursor-pointer rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-transparent p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-[0_8px_30px_rgba(16,185,129,0.12)]"
             >
               <div className="flex items-center justify-between mb-4">
@@ -641,22 +758,37 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
           </div>
 
           </StaggerItem>
-          <StaggerItem>{/* Tertiary: YouTube */}
-          <div className="relative group rounded-2xl border border-red-500/20 bg-gradient-to-br from-[#1a0f0f] to-[#0a0505] p-8 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-red-500/40 hover:shadow-[0_8px_30px_rgba(239,68,68,0.1)]">
+          <StaggerItem>{/* Tertiary: YouTube & Playlists */}
+          <div 
+            onClick={() => handleBrowseLibrary('ypl')}
+            className="relative group rounded-2xl border border-red-500/20 bg-gradient-to-br from-[#1a0f0f] to-[#0a0505] p-8 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-red-500/40 hover:shadow-[0_8px_30px_rgba(239,68,68,0.1)] cursor-pointer"
+          >
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-6 border border-red-500/20">
                 <Youtube className="w-6 h-6 text-red-400" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Video Tutorials</h3>
+              <h3 className="text-xl font-bold text-white mb-2">Video Playlists & Tutorials</h3>
               <p className="text-slate-200 mb-6 text-sm">
-                Deep-dive architectural breakdowns and hands-on deployment guides.
+                Deep-dive architectural breakdowns, complete courses, and hands-on deployment playlists.
               </p>
               <div className="flex gap-2">
-                <span className="px-3 py-1 rounded-full bg-red-500/10 text-red-400 text-sm font-medium border border-red-500/20">
-                  24 Videos
+                <span 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBrowseLibrary('ypl');
+                  }}
+                  className="px-3 py-1 rounded-full bg-red-600/20 text-red-300 text-sm font-medium border border-red-500/30 hover:bg-red-600/30 transition-colors cursor-pointer"
+                >
+                  Playlists
                 </span>
-                <span className="px-3 py-1 rounded-full bg-white/[0.03] text-slate-100 text-sm font-medium border border-white/10">
-                  2 Playlists
+                <span 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBrowseLibrary('yt');
+                  }}
+                  className="px-3 py-1 rounded-full bg-white/[0.03] text-slate-100 text-sm font-medium border border-white/10 hover:bg-white/[0.08] transition-colors cursor-pointer"
+                >
+                  Videos
                 </span>
               </div>
             </div>
@@ -700,8 +832,8 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
         
         <div className="mt-12 text-center">
           <button 
-            onClick={() => setView('feed')}
-            className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-xl shadow-fuchsia-900/30 hover:scale-[1.02] active:scale-[0.98]"
+            onClick={() => handleBrowseLibrary()}
+            className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-xl shadow-fuchsia-900/30 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             Access All Catalogs & Resources <ArrowRight className="w-5 h-5" />
           </button>
@@ -825,8 +957,11 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
             </h2>
           </div>
 
-          <button className="flex items-center gap-2 text-fuchsia-400 hover:text-orange-300">
-            View all domains <ArrowRight size={18} />
+          <button
+            onClick={() => handleBrowseLibrary()}
+            className="flex items-center gap-2 text-fuchsia-400 hover:text-orange-300 transition-colors cursor-pointer"
+          >
+            View all resources <ArrowRight size={18} />
           </button>
         </div>
 
@@ -834,7 +969,8 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
           {domains.map((domain) => (
             <button
               key={domain.name}
-              className={`group flex items-center justify-between rounded-xl border border-white/10 bg-gradient-to-br ${domain.color} p-5 text-left transition hover:-translate-y-1 hover:border-white/25`}
+              onClick={() => handleBrowseLibrary('lab')}
+              className={`group flex items-center justify-between rounded-xl border border-white/10 bg-gradient-to-br ${domain.color} p-5 text-left transition hover:-translate-y-1 hover:border-white/25 cursor-pointer`}
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{domain.icon}</span>
@@ -975,8 +1111,8 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
                   </div>
                   {/* Inner Button */}
                   <button
-                    onClick={() => setView('feed')}
-                    className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-6 py-4 font-semibold text-white transition-colors hover:from-violet-800 hover:to-fuchsia-800"
+                    onClick={() => handleBrowseLibrary()}
+                    className="relative m-[2px] flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-violet-900 to-fuchsia-900 px-6 py-4 font-semibold text-white transition-colors hover:from-violet-800 hover:to-fuchsia-800 cursor-pointer"
                   >
                     Browse Resources <ArrowRight size={18} className="transition-transform group-hover:translate-x-1 text-fuchsia-300" />
                   </button>
@@ -1002,13 +1138,13 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
             </p>
 
             <div className="mt-6 flex gap-3">
-              <a href="https://www.linkedin.com/in/mahidhara-kailash-850611144/" target="_blank" rel="noreferrer" className="flex items-center justify-center rounded-full border border-white/10 w-10 h-10 hover:bg-white/[0.05] overflow-hidden">
+              <a href="https://www.linkedin.com/in/mahidhara-kailash-850611144/" target="_blank" rel="noreferrer" title="LinkedIn Profile" aria-label="LinkedIn Profile" className="flex items-center justify-center rounded-full border border-white/10 w-10 h-10 hover:bg-white/[0.05] overflow-hidden transition-colors">
                 <img src="/linkedin-app-icon.webp" alt="LinkedIn" className="w-6 h-6 object-cover" />
               </a>
-              <a href="https://www.instagram.com/devops_learnings/" target="_blank" rel="noreferrer" className="flex items-center justify-center rounded-full border border-white/10 w-10 h-10 hover:bg-white/[0.05] overflow-hidden">
-                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS9CihumYmd0OvEXygNNMSwjDYeLl97Zmii0MJbQUVUOA&s" alt="Instagram" className="w-6 h-6 object-cover rounded-md" referrerPolicy="no-referrer" />
+              <a href="https://www.instagram.com/devops_learnings/" target="_blank" rel="noreferrer" title="Instagram Profile" aria-label="Instagram Profile" className="flex items-center justify-center rounded-full border border-white/10 w-10 h-10 hover:bg-white/[0.05] overflow-hidden transition-colors">
+                <Instagram className="w-5 h-5 text-pink-400" />
               </a>
-              <a href="mailto:suryakailash.mahidhara@gmail.com" className="flex items-center justify-center rounded-full border border-white/10 w-10 h-10 hover:bg-white/[0.05]">
+              <a href="mailto:suryakailash.mahidhara@gmail.com" title="Email Suryakailash" aria-label="Email Suryakailash" className="flex items-center justify-center rounded-full border border-white/10 w-10 h-10 hover:bg-white/[0.05] transition-colors">
                 <Mail size={18} />
               </a>
             </div>
@@ -1016,17 +1152,34 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
 
           <FooterColumn
             title="Explore"
-            links={["All Resources", "Guides", "Tutorials", "Tools", "Cheat Sheets"]}
+            links={[
+              { label: "All Resources", onClick: () => handleBrowseLibrary() },
+              { label: "Guides", onClick: () => handleBrowseLibrary('yt') },
+              { label: "Tutorials", onClick: () => handleBrowseLibrary('ypl') },
+              { label: "Tools", onClick: () => handleBrowseLibrary('web') },
+              { label: "Cheat Sheets", onClick: () => handleBrowseLibrary('lab') },
+            ]}
           />
 
           <FooterColumn
             title="Learn & Grow"
-            links={["Learning Paths", "Best Practices", "Hands-on Labs", "DevOps Roadmap"]}
+            links={[
+              { label: "Learning Paths", onClick: () => handleBrowseLibrary('blog') },
+              { label: "Best Practices", onClick: () => handleBrowseLibrary('blog') },
+              { label: "Hands-on Labs", onClick: () => handleBrowseLibrary('lab') },
+              { label: "DevOps Roadmap", onClick: () => handleBrowseLibrary('git') },
+            ]}
           />
 
           <FooterColumn
             title="DevOps Domains"
-            links={["Kubernetes", "Cloud", "CI/CD", "Infrastructure", "Observability"]}
+            links={[
+              { label: "Kubernetes", onClick: () => { document.getElementById('domains')?.scrollIntoView({ behavior: 'smooth' }); } },
+              { label: "Cloud", onClick: () => { document.getElementById('architecture')?.scrollIntoView({ behavior: 'smooth' }); } },
+              { label: "CI/CD", onClick: () => { document.getElementById('domains')?.scrollIntoView({ behavior: 'smooth' }); } },
+              { label: "Infrastructure", onClick: () => { document.getElementById('architecture')?.scrollIntoView({ behavior: 'smooth' }); } },
+              { label: "Observability", onClick: () => { document.getElementById('domains')?.scrollIntoView({ behavior: 'smooth' }); } },
+            ]}
           />
 
           <div>
@@ -1036,17 +1189,31 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
               Get useful DevOps resources and updates in your inbox.
             </p>
 
-            <div className="mt-5 flex rounded-xl border border-white/10 bg-white/[0.03] p-1">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="w-full bg-transparent px-4 py-3 text-sm outline-none placeholder:text-slate-200"
-              />
+            <form onSubmit={handleNewsletterSubmit} className="mt-5 flex flex-col gap-2">
+              <div className="flex rounded-xl border border-white/10 bg-white/[0.03] p-1 focus-within:border-fuchsia-500/50 transition-colors">
+                <input
+                  type="email"
+                  aria-label="Enter your email"
+                  placeholder="Enter your email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  className="w-full bg-transparent px-4 py-3 text-sm outline-none placeholder:text-slate-200"
+                />
 
-              <button className="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 transition hover:from-violet-500 hover:to-fuchsia-500">
-                <ArrowRight size={18} />
-              </button>
-            </div>
+                <button
+                  type="submit"
+                  aria-label="Subscribe"
+                  className="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 transition hover:from-violet-500 hover:to-fuchsia-500 cursor-pointer"
+                >
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+              {newsletterFeedback && (
+                <div className={`text-xs px-2 font-medium ${newsletterFeedback.err ? "text-red-400" : "text-emerald-400"}`}>
+                  {newsletterFeedback.msg}
+                </div>
+              )}
+            </form>
           </div>
         </div>
 
@@ -1059,20 +1226,20 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
   );
 }
 
-function FooterColumn({ title, links }: { title: string; links: string[] }) {
+function FooterColumn({ title, links }: { title: string; links: Array<{ label: string; onClick?: () => void }> }) {
   return (
     <div>
       <h4 className="font-bold">{title}</h4>
 
       <div className="mt-5 flex flex-col gap-3">
         {links.map((link) => (
-          <a
-            key={link}
-            href="#"
-            className="text-sm text-slate-200 transition hover:text-fuchsia-400"
+          <button
+            key={link.label}
+            onClick={link.onClick}
+            className="text-left text-sm text-slate-200 transition hover:text-fuchsia-400 cursor-pointer"
           >
-            {link}
-          </a>
+            {link.label}
+          </button>
         ))}
       </div>
     </div>

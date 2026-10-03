@@ -39,15 +39,27 @@ import {
   Terminal,
   Eye,
   EyeOff,
+  ListVideo,
+  Layers,
+  Edit2,
+  Lock,
+  Bookmark,
+  CheckCircle2,
 } from "lucide-react";
 import { YTCard, YPLCard, YSCard, LICard, LPCard, BlogCard, EmailCard, TWCard, GitCard, IGCard, THCard, WebCard, LabCard } from "./components/Cards";
 import { Modal } from "./components/Modal";
 import { InstagramModal } from "./components/InstagramModal";
 import { ThreadsModal } from "./components/ThreadsModal";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useCentralHub } from "./hooks/useCentralHub";
+import { useAuth } from "./context/AuthContext";
+import { AuthModal } from "./components/AuthModal";
+import { UserNav } from "./components/UserNav";
+import { UserDashboard } from "./components/UserDashboard";
+import { analyticsEvents } from "./lib/posthog";
 import { ItemType, HubItem } from "./types";
 // Removed gemini import
-import { parseSlug, classifyUrl, isThreadsUrl, isInstagramUrl, isInstagramReelUrl, ytId, ytPlaylistId, extractEmailDetails, guessCategoryFromUrl, extractTopicFromLinkedInUrl, extractLinkedInAuthor, extractTwitterUsername, extractInstagramShortcode, extractThreadsShortcode, extractThreadsAuthor } from "./utils";
+import { parseSlug, classifyUrl, isThreadsUrl, isInstagramUrl, isInstagramReelUrl, ytId, ytPlaylistId, getPlaylistThumbnail, extractEmailDetails, guessCategoryFromUrl, extractTopicFromLinkedInUrl, extractLinkedInAuthor, extractTwitterUsername, extractInstagramShortcode, extractThreadsShortcode, extractThreadsAuthor } from "./utils";
 import { logAnalyticsEvent } from "./analytics";
 
 const JOB_ROLES = [
@@ -80,7 +92,25 @@ interface FeedCardItemProps {
   onClick: (item: any) => void;
   onEnrich?: (tab: ItemType, id: number | string) => void;
   showToast: (msg: string, err?: boolean) => void;
+  isGlobalSearch?: boolean;
 }
+
+const GLOBAL_SECTION_META: Record<string, { name: string; icon: string; color: string }> = {
+  yt: { name: "YouTube", icon: "▶", color: "bg-red-500/10 text-red-300 border-red-500/30" },
+  ypl: { name: "Playlist", icon: "📑", color: "bg-red-500/10 text-red-300 border-red-500/30" },
+  ys: { name: "Shorts", icon: "⚡", color: "bg-red-500/10 text-red-300 border-red-500/30" },
+  lp: { name: "LinkedIn Post", icon: "💼", color: "bg-sky-500/10 text-sky-300 border-sky-500/30" },
+  li: { name: "LinkedIn Member", icon: "👤", color: "bg-sky-500/10 text-sky-300 border-sky-500/30" },
+  tw: { name: "Twitter/X", icon: "𝕏", color: "bg-cyan-500/10 text-cyan-300 border-cyan-500/30" },
+  ig: { name: "Instagram Reel", icon: "📸", color: "bg-pink-500/10 text-pink-300 border-pink-500/30" },
+  igp: { name: "Instagram Post", icon: "🖼", color: "bg-pink-500/10 text-pink-300 border-pink-500/30" },
+  th: { name: "Threads", icon: "@", color: "bg-purple-500/10 text-purple-300 border-purple-500/30" },
+  blog: { name: "Blog Article", icon: "📝", color: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30" },
+  email: { name: "Job Contact", icon: "✉", color: "bg-indigo-500/10 text-indigo-300 border-indigo-500/30" },
+  git: { name: "GitHub Repo", icon: "🐙", color: "bg-slate-500/10 text-slate-200 border-slate-500/30" },
+  web: { name: "Web Resource", icon: "🌐", color: "bg-blue-500/10 text-blue-300 border-blue-500/30" },
+  lab: { name: "Hands-on Lab", icon: "⚡", color: "bg-amber-500/10 text-amber-300 border-amber-500/30" },
+};
 
 const FeedCardItem = React.memo(function FeedCardItem({
   item,
@@ -91,51 +121,138 @@ const FeedCardItem = React.memo(function FeedCardItem({
   onClick,
   onEnrich,
   showToast,
+  isGlobalSearch,
 }: FeedCardItemProps) {
-  const handleStar = useCallback(() => onStar(tab, item.id), [onStar, tab, item.id]);
-  const handleDelete = useCallback(() => onDelete(tab, item.id), [onDelete, tab, item.id]);
-  const handleCopy = useCallback(() => onCopy(tab, item), [onCopy, tab, item]);
-  const handleClick = useCallback(() => onClick(item), [onClick, item]);
-  const handleEnrich = onEnrich ? useCallback(() => onEnrich(tab, item.id), [onEnrich, tab, item.id]) : undefined;
+  const actualTab = (item.type || tab) as ItemType;
+  const { isCompleted, isBookmarked, toggleProgress, toggleBookmark } = useAuth();
+  const completed = isCompleted(item.id);
+  const bookmarked = isBookmarked(item.id);
 
-  switch (tab) {
-    case "yt":
-      return <YTCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
-    case "ypl":
-      return <YPLCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
-    case "ys":
-      return <YSCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
-    case "lp":
-      return <LPCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
-    case "li":
-      return <LICard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
-    case "blog":
-      return <BlogCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
-    case "email":
-      return <EmailCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
-    case "tw":
-      return <TWCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} showToast={showToast} />;
-    case "th":
-      return <THCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
-    case "ig":
-    case "igp":
-      return <IGCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
-    case "git":
-      return <GitCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
-    case "web":
-      return <WebCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
-    case "lab":
-      return <LabCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
-    default:
-      return <LPCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
-  }
+  const handleStar = useCallback(() => onStar(actualTab, item.id), [onStar, actualTab, item.id]);
+  const handleDelete = useCallback(() => onDelete(actualTab, item.id), [onDelete, actualTab, item.id]);
+  const handleCopy = useCallback(() => onCopy(actualTab, item), [onCopy, actualTab, item]);
+  const handleClick = useCallback(() => onClick(item), [onClick, item]);
+  const handleEnrich = onEnrich ? useCallback(() => onEnrich(actualTab, item.id), [onEnrich, actualTab, item.id]) : undefined;
+
+  const renderCardBody = () => {
+    switch (actualTab) {
+      case "yt":
+        return <YTCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+      case "ypl":
+        return <YPLCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+      case "ys":
+        return <YSCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+      case "lp":
+        return <LPCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+      case "li":
+        return <LICard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+      case "blog":
+        return <BlogCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+      case "email":
+        return <EmailCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+      case "tw":
+        return <TWCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} showToast={showToast} />;
+      case "th":
+        return <THCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+      case "ig":
+      case "igp":
+        return <IGCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+      case "git":
+        return <GitCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+      case "web":
+        return <WebCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+      case "lab":
+        return <LabCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} />;
+      default:
+        return <LPCard key={item.id} item={item} onStar={handleStar} onCopy={handleCopy} onClick={handleClick} onDelete={handleDelete} onEnrich={handleEnrich} />;
+    }
+  };
+
+  const meta = GLOBAL_SECTION_META[actualTab] || { name: actualTab, icon: "•", color: "bg-white/10 text-white border-white/20" };
+
+  return (
+    <div className="flex flex-col h-full group/card relative">
+      <div className="mb-2 flex items-center justify-between px-1">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {isGlobalSearch && (
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${meta.color} shadow-sm backdrop-blur-sm`}>
+              <span>{meta.icon}</span>
+              <span>{meta.name}</span>
+            </span>
+          )}
+          {item.isProtected && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm">
+              <Lock className="w-2.5 h-2.5" /> Premium
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleProgress(item.id, item.title, actualTab);
+            }}
+            title={completed ? "Marked as Completed" : "Mark as Completed"}
+            className={`p-1.5 rounded-full border transition-all cursor-pointer ${
+              completed
+                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.25)]"
+                : "bg-white/[0.04] text-white/40 hover:text-emerald-300 hover:bg-white/[0.08] border-white/10"
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleBookmark(item.id, item.title, actualTab);
+            }}
+            title={bookmarked ? "Remove Bookmark" : "Save Bookmark"}
+            className={`p-1.5 rounded-full border transition-all cursor-pointer ${
+              bookmarked
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.25)]"
+                : "bg-white/[0.04] text-white/40 hover:text-amber-300 hover:bg-white/[0.08] border-white/10"
+            }`}
+          >
+            <Bookmark className={`w-3.5 h-3.5 ${bookmarked ? "fill-current" : ""}`} />
+          </button>
+
+          {item.date && (
+            <span className="text-[11px] text-white/40 font-mono ml-1 hidden sm:inline">
+              {item.date}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex-1">
+        {renderCardBody()}
+      </div>
+    </div>
+  );
 });
 
 function MainApp() {
   const navigate = useNavigate();
   const location = useLocation();
-  const view = location.pathname.startsWith("/admin/dashboard") ? "admin" : location.pathname === "/feed" ? "feed" : "landing";
-  const setView = (v: string) => navigate(v === "landing" ? "/" : v === "admin" ? "/admin/dashboard" : `/${v}`);
+  const { user, openAuthModal, loading: authLoading } = useAuth();
+  const view = location.pathname.startsWith("/admin/dashboard") 
+    ? "admin" 
+    : location.pathname === "/dashboard" 
+    ? "dashboard" 
+    : location.pathname === "/feed" 
+    ? "feed" 
+    : "landing";
+  const setView = (v: string) => navigate(v === "landing" ? "/" : v === "admin" ? "/admin/dashboard" : v === "dashboard" ? "/dashboard" : `/${v}`);
+
+  // Auto-prompt login if /feed is visited while not logged in
+  useEffect(() => {
+    if (view === "feed" && !user && !authLoading) {
+      openAuthModal('login', 'Please sign in with GitHub, Google, or Mobile to browse the free DevOps library.');
+    }
+  }, [view, user, authLoading, openAuthModal]);
 
   const {
     db,
@@ -156,6 +273,11 @@ function MainApp() {
     showToast,
   } = useCentralHub();
 
+  // Page view tracking for PostHog Product Analytics
+  useEffect(() => {
+    analyticsEvents.pageView(location.pathname, { tab: currentTab });
+  }, [location.pathname, currentTab]);
+
   const [selectedItem, setSelectedItem] = useState<HubItem | null>(null);
   const [modalDefaultEditing, setModalDefaultEditing] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -163,6 +285,7 @@ function MainApp() {
   const [selectedLabTag, setSelectedLabTag] = useState("");
   const [selectedWebTag, setSelectedWebTag] = useState("");
   const [selectedIGTag, setSelectedIGTag] = useState("");
+  const [searchSectionFilter, setSearchSectionFilter] = useState<string>("all");
   const [addInput, setAddInput] = useState("");
   const [linkInput, setLinkInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -211,6 +334,28 @@ function MainApp() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
+
+  // Escape key handler for admin quick add modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showAdminModal) {
+        setShowAdminModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showAdminModal]);
+
+  // Lock body scroll when quick add modal is open
+  useEffect(() => {
+    if (showAdminModal) {
+      const orig = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = orig;
+      };
+    }
+  }, [showAdminModal]);
 
   const handleInstall = async () => {
     if (deferredPrompt) {
@@ -599,7 +744,9 @@ function MainApp() {
     setLoading(true);
     let t: ItemType;
     const activeTab = view === "admin" ? adminTab : currentTab;
-    if (isThreadsUrl(url)) {
+    if (activeTab === "ypl" || url.includes("playlist?list=") || url.includes("/playlist/") || ((url.includes("youtube.com") || url.includes("youtu.be")) && url.includes("list="))) {
+      t = "ypl";
+    } else if (isThreadsUrl(url)) {
       t = "th";
     } else if (isInstagramUrl(url)) {
       if (activeTab === "ig") {
@@ -655,34 +802,59 @@ function MainApp() {
         }
       } else if (t === "ypl") {
         const pid = ytPlaylistId(url);
+        const vid = ytId(url);
         try {
           const res = await fetch(
-            `/api/youtube-meta?url=${encodeURIComponent(url)}`,
+            `/api/youtube-meta?url=${encodeURIComponent(url)}&force=true`,
           );
           const json = await res.json();
           if (json.success && json.data) {
+            const resolvedThumb =
+              json.data.thumbnail && !json.data.thumbnail.includes("placeholder")
+                ? json.data.thumbnail
+                : json.data.vid
+                ? `https://img.youtube.com/vi/${json.data.vid}/hqdefault.jpg`
+                : vid
+                ? `https://img.youtube.com/vi/${vid}/hqdefault.jpg`
+                : getPlaylistThumbnail({ url, title: json.data.title || "YouTube Playlist", pid: json.data.pid || pid || "" });
+
             meta = {
               ...meta,
               title: json.data.title || "YouTube Playlist",
               author: json.data.author || "",
-              thumbnail: json.data.thumbnail || (pid ? `https://img.youtube.com/vi/placeholder/hqdefault.jpg` : ""),
+              thumbnail: resolvedThumb,
               pid: json.data.pid || pid || "",
-              count: 0,
+              vid: json.data.vid || vid || "",
+              count: json.data.count || json.data.videoList?.length || 0,
+              videoList: json.data.videoList || [],
+              progressStatus: "not_started",
             };
           } else {
+            const fallbackThumb = vid
+              ? `https://img.youtube.com/vi/${vid}/hqdefault.jpg`
+              : getPlaylistThumbnail({ url, title: "YouTube Playlist", pid: pid || "" });
             meta = {
               ...meta,
               title: "YouTube Playlist",
+              thumbnail: fallbackThumb,
               pid: pid || "",
+              vid: vid || "",
               count: 0,
+              progressStatus: "not_started",
             };
           }
         } catch (err) {
+          const fallbackThumb = vid
+            ? `https://img.youtube.com/vi/${vid}/hqdefault.jpg`
+            : getPlaylistThumbnail({ url, title: "YouTube Playlist", pid: pid || "" });
           meta = {
             ...meta,
             title: "YouTube Playlist",
+            thumbnail: fallbackThumb,
             pid: pid || "",
+            vid: vid || "",
             count: 0,
+            progressStatus: "not_started",
           };
         }
       } else if (t === "blog") {
@@ -1032,8 +1204,19 @@ function MainApp() {
         handle: meta.handle || "",
         heading: meta.heading || "",
       };
-      if (t === "yt" || t === "ys") item.vid = meta.vid || ytId(url);
-      if (t === "ypl") item.pid = meta.pid || ytPlaylistId(url);
+      if (t === "yt" || t === "ys") item.vid = meta.vid || ytId(url) || "";
+      if (t === "ypl") {
+        item.pid = meta.pid || ytPlaylistId(url) || "";
+        item.vid = meta.vid || ytId(url) || "";
+        item.count = meta.count || 0;
+        if (meta.videoList && Array.isArray(meta.videoList)) {
+          item.videoList = meta.videoList;
+        }
+        item.progressStatus = meta.progressStatus || "not_started";
+        if (!item.thumbnail || item.thumbnail.includes("placeholder")) {
+          item.thumbnail = getPlaylistThumbnail(item);
+        }
+      }
       if (t === "git") {
         item.stars = meta.stars ?? 0;
         item.forks = meta.forks ?? 0;
@@ -1080,28 +1263,39 @@ function MainApp() {
         month: "short",
         year: "numeric",
       });
-      await addItem(t as ItemType, {
-        id,
-        type: t,
-        url,
-        date,
-        ts: id,
-        title: t === "th" ? (extractThreadsAuthor(url) ? `${extractThreadsAuthor(url)} on Threads` : "Threads Post") : url,
-        author: t === "th" ? extractThreadsAuthor(url) : "",
-        thumbnail: "",
-        description: "",
-        tags: [],
-        starred: false,
-        vid: t === "yt" || t === "ys" ? ytId(url) || null : null,
-        pid: t === "ypl" ? ytPlaylistId(url) || null : null,
-        shortcode: (t === "ig" || t === "igp") ? extractInstagramShortcode(url) || null : t === "th" ? extractThreadsShortcode(url) || null : null,
-      } as any);
-      showToast("Added link (metadata fetch failed)");
-      setAddInput("");
-      if (view !== "admin") {
-        setCurrentTab(t as ItemType);
-      } else {
-        setAdminTab(t as ItemType);
+      const fallbackPid = t === "ypl" ? ytPlaylistId(url) || "" : "";
+      const fallbackVid = t === "yt" || t === "ys" || t === "ypl" ? ytId(url) || "" : "";
+      const fallbackThumb = t === "ypl" ? getPlaylistThumbnail({ url, title: "YouTube Playlist", pid: fallbackPid, vid: fallbackVid }) : (fallbackVid ? `https://img.youtube.com/vi/${fallbackVid}/mqdefault.jpg` : "");
+
+      try {
+        await addItem(t as ItemType, {
+          id,
+          type: t,
+          url,
+          date,
+          ts: id,
+          title: t === "th" ? (extractThreadsAuthor(url) ? `${extractThreadsAuthor(url)} on Threads` : "Threads Post") : t === "ypl" ? "YouTube Playlist" : url,
+          author: t === "th" ? extractThreadsAuthor(url) : "",
+          thumbnail: fallbackThumb,
+          description: "",
+          tags: [],
+          starred: false,
+          vid: fallbackVid,
+          pid: fallbackPid,
+          count: 0,
+          progressStatus: "not_started",
+          shortcode: (t === "ig" || t === "igp") ? extractInstagramShortcode(url) || null : t === "th" ? extractThreadsShortcode(url) || null : null,
+        } as any);
+        showToast("Added link (metadata fetch failed)");
+        setAddInput("");
+        if (view !== "admin") {
+          setCurrentTab(t as ItemType);
+        } else {
+          setAdminTab(t as ItemType);
+        }
+      } catch (addErr) {
+        console.error("Failed to add fallback item:", addErr);
+        showToast("Failed to add link", true);
       }
     }
     setLoading(false);
@@ -1145,8 +1339,19 @@ function MainApp() {
   );
 
   const handleSelectItem = useCallback((item: any) => {
-    setSelectedItem(item);
-  }, []);
+    setModalDefaultEditing(false);
+    if (!item) {
+      setSelectedItem(null);
+      return;
+    }
+    // Premium Content Gating: Prompt login modal if protected item is clicked without user session
+    if (item.isProtected && !user) {
+      openAuthModal('login', `This is a protected premium topic. Sign in with GitHub, Google, or Mobile to unlock full access.`);
+      return;
+    }
+    const resolvedType = item.type || currentTab || "lab";
+    setSelectedItem({ ...item, type: resolvedType });
+  }, [currentTab, user, openAuthModal]);
 
   const handleEnrichItem = useCallback(
     (tab: ItemType, id: number | string) => {
@@ -1166,6 +1371,157 @@ function MainApp() {
     }
 
     const q = deferredSearchQuery.toLowerCase().trim();
+
+    // ==========================================
+    // GLOBAL SEARCH MODE (searches across all 13 sections)
+    // ==========================================
+    if (q) {
+      const ALL_SECTIONS: ItemType[] = [
+        "yt", "ypl", "ys", "lp", "tw", "ig", "igp", "th", "blog", "email", "git", "web", "lab"
+      ];
+
+      const countsBySection: Record<string, number> = {};
+      const resultsBySection: Record<string, any[]> = {};
+      let allResults: any[] = [];
+
+      ALL_SECTIONS.forEach((sec) => {
+        const secItems = (db[sec] || []).map((x: any) => ({ ...x, type: x.type || sec }));
+        let filtered = secItems;
+
+        if (showStarredOnly) {
+          filtered = filtered.filter((x: any) => x.starred);
+        }
+
+        if (searchDate) {
+          filtered = filtered.filter((x: any) => {
+            if (!x.ts) return false;
+            const d = new Date(x.ts);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}` === searchDate;
+          });
+        }
+
+        filtered = filtered.filter((x: any) => {
+          const searchableFields = [
+            x.title,
+            x.author,
+            x.description,
+            x.company,
+            x.role,
+            x.url,
+            x.heading,
+            x.date,
+            x.platform,
+            x.handle,
+            x.location,
+            x.postType,
+            x.difficulty,
+            x.duration,
+            x.domain,
+          ];
+          if (Array.isArray(x.topics)) searchableFields.push(...x.topics);
+          if (Array.isArray(x.tags)) searchableFields.push(...x.tags);
+          if (Array.isArray(x.skills)) searchableFields.push(...x.skills);
+
+          return searchableFields.some(
+            (s) => s && typeof s === 'string' && s.toLowerCase().includes(q)
+          );
+        });
+
+        countsBySection[sec] = filtered.length;
+        resultsBySection[sec] = filtered;
+        allResults.push(...filtered);
+      });
+
+      const totalMatches = allResults.length;
+      const displayItems = searchSectionFilter === "all"
+        ? allResults
+        : (resultsBySection[searchSectionFilter] || []);
+
+      if (totalMatches === 0) {
+        return (
+          <div className="text-center py-28 text-slate-200 border border-white/10 border-dashed rounded-2xl bg-black/20/[0.02] flex flex-col items-center">
+            <Search className="w-16 h-16 mx-auto mb-6 text-fuchsia-400/50" />
+            <h3 className="text-xl font-bold mb-2">No matching items found</h3>
+            <p className="text-sm text-slate-400 mb-6 max-w-md">
+              We searched across all 13 sections for "<span className="text-white font-medium">{searchQuery}</span>" but found no matches.
+            </p>
+            <button 
+              onClick={() => {
+                setSearchQuery("");
+                setSearchSectionFilter("all");
+              }}
+              className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold transition-all rounded-full text-sm shadow-lg shadow-fuchsia-900/30 cursor-pointer"
+            >
+              Clear Search
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-6 animate-fade-in">
+          {/* Section filter pills for global search */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+            <span className="text-xs font-semibold text-white/50 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" /> Filter by Section:
+            </span>
+            <button
+              onClick={() => setSearchSectionFilter("all")}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border cursor-pointer ${
+                searchSectionFilter === "all"
+                  ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white border-transparent shadow-[0_0_12px_rgba(217,70,239,0.35)]"
+                  : "bg-white/[0.04] text-white/70 hover:text-white hover:bg-white/[0.08] border-white/10"
+              }`}
+            >
+              All Sections ({totalMatches})
+            </button>
+            {ALL_SECTIONS.map((sec) => {
+              const count = countsBySection[sec] || 0;
+              if (count === 0) return null;
+              const meta = GLOBAL_SECTION_META[sec] || { name: sec, icon: "•" };
+              const isSelected = searchSectionFilter === sec;
+              return (
+                <button
+                  key={sec}
+                  onClick={() => setSearchSectionFilter(isSelected ? "all" : sec)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 border cursor-pointer ${
+                    isSelected
+                      ? "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/50 shadow-[0_0_12px_rgba(232,121,249,0.25)]"
+                      : "bg-white/[0.04] text-white/70 hover:text-white hover:bg-white/[0.08] border-white/10"
+                  }`}
+                >
+                  <span>{meta.icon}</span>
+                  <span>{meta.name}</span>
+                  <span className="opacity-70 text-[10px] font-mono">({count})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Results Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
+            {displayItems.map((item: any) => (
+              <FeedCardItem
+                key={`${item.type || tabToRender}-${item.id}`}
+                item={item}
+                tab={item.type || tabToRender}
+                onStar={handleStarItem}
+                onDelete={handleDeleteItem}
+                onCopy={handleCopyItem}
+                onClick={handleSelectItem}
+                onEnrich={item.type === "lp" || item.type === "li" ? handleEnrichItem : undefined}
+                showToast={showToast}
+                isGlobalSearch={true}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     let items = db[tabToRender] || [];
 
     if (showStarredOnly) {
@@ -1292,6 +1648,108 @@ function MainApp() {
           />
         ))}
       </div>
+    );
+  };
+
+  const renderActiveModal = () => {
+    if (!selectedItem) return null;
+
+    if (selectedItem.type === "th") {
+      const thItems = db.th || [];
+      const currentIdx = thItems.findIndex((x) => x.id === selectedItem.id);
+      const hasPrev = currentIdx > 0;
+      const hasNext = currentIdx >= 0 && currentIdx < thItems.length - 1;
+
+      return (
+        <ThreadsModal
+          key={selectedItem.id}
+          item={selectedItem}
+          currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
+          totalCount={thItems.length > 0 ? thItems.length : undefined}
+          onPrev={hasPrev ? () => setSelectedItem(thItems[currentIdx - 1]) : undefined}
+          onNext={hasNext ? () => setSelectedItem(thItems[currentIdx + 1]) : undefined}
+          onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
+          onStar={() => {
+            if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
+            setSelectedItem((prev) =>
+              prev ? { ...prev, starred: !prev.starred } : null,
+            );
+          }}
+          onCopy={() => {
+            if (selectedItem) {
+              navigator.clipboard.writeText(selectedItem.url);
+              showToast("Threads link copied!");
+            }
+          }}
+        />
+      );
+    }
+
+    if (selectedItem.type === "ig" || selectedItem.type === "igp") {
+      const igItems = (currentTab === "ig" || currentTab === "igp")
+        ? (db[currentTab] || [])
+        : [...(db.ig || []), ...(db.igp || [])];
+      const currentIdx = igItems.findIndex((x) => x.id === selectedItem.id);
+      const hasPrev = currentIdx > 0;
+      const hasNext = currentIdx >= 0 && currentIdx < igItems.length - 1;
+
+      return (
+        <InstagramModal
+          key={selectedItem.id}
+          item={selectedItem}
+          currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
+          totalCount={igItems.length > 0 ? igItems.length : undefined}
+          onPrev={hasPrev ? () => setSelectedItem(igItems[currentIdx - 1]) : undefined}
+          onNext={hasNext ? () => setSelectedItem(igItems[currentIdx + 1]) : undefined}
+          onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
+          onStar={() => {
+            if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
+            setSelectedItem((prev) =>
+              prev ? { ...prev, starred: !prev.starred } : null,
+            );
+          }}
+          onCopy={() => {
+            if (selectedItem) {
+              navigator.clipboard.writeText(selectedItem.url);
+              showToast("Instagram link copied!");
+            }
+          }}
+        />
+      );
+    }
+
+    return (
+      <ErrorBoundary fallbackTitle="Item Details Modal Error" onReset={() => { setSelectedItem(null); setModalDefaultEditing(false); }}>
+        <Modal
+          key={selectedItem.id}
+          item={selectedItem}
+          isAdmin={isAdminAuth}
+          defaultEditing={modalDefaultEditing}
+          onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
+          onStar={() => {
+            if (selectedItem) toggleStar((selectedItem.type || currentTab || "lab") as ItemType, selectedItem.id);
+            setSelectedItem((prev) =>
+              prev ? { ...prev, starred: !prev.starred } : null,
+            );
+          }}
+          onCopy={() => {
+            if (selectedItem) {
+              if (selectedItem.type === "li" && selectedItem.title && selectedItem.title !== "LinkedIn Member" && !selectedItem.title.startsWith("http")) {
+                let copyText = selectedItem.title;
+                if ((selectedItem as any).company) {
+                  copyText += ` - ${(selectedItem as any).company}`;
+                }
+                navigator.clipboard.writeText(copyText);
+                showToast("Profile details copied!");
+                return;
+              }
+              navigator.clipboard.writeText(selectedItem.url || "");
+              showToast("Link copied!");
+            }
+          }}
+          onUpdate={(id, updates) => updateItem((selectedItem.type || currentTab || "lab") as ItemType, id, updates)}
+        />
+      </ErrorBoundary>
     );
   };
 
@@ -1821,7 +2279,10 @@ function MainApp() {
                 <div
                   key={item.id}
                   className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-transparent border border-[#27272A] rounded-md cursor-pointer hover:border-[#3F3F46] hover:bg-[#09090B] transition-colors group mb-2"
-                  onClick={() => setSelectedItem(item)}
+                  onClick={() => {
+                    setModalDefaultEditing(false);
+                    setSelectedItem({ ...item, type: (item.type || adminTab || "lab") as any });
+                  }}
                 >
                   <div className="truncate flex-1 mr-4">
                     <div className="text-sm font-medium text-[#EDEDED] truncate">
@@ -2015,25 +2476,37 @@ function MainApp() {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-1.5 shrink-0 mt-3 sm:mt-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalDefaultEditing(true);
+                        setSelectedItem({ ...item, type: (item.type || adminTab || "lab") as any });
+                      }}
+                      className="px-2.5 py-1.5 text-xs font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/40 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                      title="Edit details popup"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
                     {item.url && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(item.url, '_blank', 'noopener,noreferrer');
-                        }}
-                        className="p-2.5 text-fuchsia-400 opacity-0 group-hover:opacity-100 hover:bg-fuchsia-500/10 rounded-lg transition-all"
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-2 text-fuchsia-400 opacity-80 sm:opacity-0 group-hover:opacity-100 hover:bg-fuchsia-500/10 rounded-lg transition-all flex items-center justify-center cursor-pointer"
                         title="Preview link"
                       >
                         <ExternalLink className="w-4 h-4" />
-                      </button>
+                      </a>
                     )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleStar(adminTab, item.id);
                       }}
-                      className={`p-2.5 rounded-lg transition-all ${item.starred ? "text-amber-400 bg-amber-400/10" : "text-white/40 opacity-0 group-hover:opacity-100 hover:bg-white/[0.05] hover:text-white"}`}
+                      className={`p-2 rounded-lg transition-all ${item.starred ? "text-amber-400 bg-amber-400/10" : "text-white/40 opacity-80 sm:opacity-0 group-hover:opacity-100 hover:bg-white/[0.05] hover:text-white"}`}
                       title="Star item"
                     >
                       <Star className={`w-4 h-4 ${item.starred ? "fill-current" : ""}`} />
@@ -2043,7 +2516,7 @@ function MainApp() {
                         e.stopPropagation();
                         deleteItem(adminTab, item.id);
                       }}
-                      className="p-2.5 text-red-400 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 rounded-lg transition-all"
+                      className="p-2 text-red-400 opacity-80 sm:opacity-0 group-hover:opacity-100 hover:bg-red-500/10 rounded-lg transition-all"
                       title="Delete item"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -2056,19 +2529,40 @@ function MainApp() {
           </div>
         </div>
 
-        {selectedItem?.type === "th" ? (() => {
-          const thItems = db.th || [];
-          const currentIdx = thItems.findIndex((x) => x.id === selectedItem.id);
-          const hasPrev = currentIdx > 0;
-          const hasNext = currentIdx >= 0 && currentIdx < thItems.length - 1;
+        {selectedItem && (
+          selectedItem.type === "th" ? (() => {
+            const thItems = db.th || [];
+            const currentIdx = thItems.findIndex((x) => x.id === selectedItem.id);
+            const hasPrev = currentIdx > 0;
+            const hasNext = currentIdx >= 0 && currentIdx < thItems.length - 1;
 
-          return (
-            <ThreadsModal
+            return (
+              <ThreadsModal
+                key={selectedItem.id}
+                item={selectedItem}
+                currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
+                totalCount={thItems.length > 0 ? thItems.length : undefined}
+                onPrev={hasPrev ? () => setSelectedItem(thItems[currentIdx - 1]) : undefined}
+                onNext={hasNext ? () => setSelectedItem(thItems[currentIdx + 1]) : undefined}
+                onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
+                onStar={() => {
+                  if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
+                  setSelectedItem((prev) =>
+                    prev ? { ...prev, starred: !prev.starred } : null,
+                  );
+                }}
+                onCopy={() => {
+                  if (selectedItem) {
+                    navigator.clipboard.writeText(selectedItem.url);
+                    showToast("Threads link copied!");
+                  }
+                }}
+              />
+            );
+          })() : (selectedItem.type === "ig" || selectedItem.type === "igp") ? (
+            <InstagramModal
+              key={selectedItem.id}
               item={selectedItem}
-              currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
-              totalCount={thItems.length > 0 ? thItems.length : undefined}
-              onPrev={hasPrev ? () => setSelectedItem(thItems[currentIdx - 1]) : undefined}
-              onNext={hasNext ? () => setSelectedItem(thItems[currentIdx + 1]) : undefined}
               onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
               onStar={() => {
                 if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
@@ -2079,71 +2573,67 @@ function MainApp() {
               onCopy={() => {
                 if (selectedItem) {
                   navigator.clipboard.writeText(selectedItem.url);
-                  showToast("Threads link copied!");
+                  showToast("Instagram link copied!");
                 }
               }}
             />
-          );
-        })() : (selectedItem?.type === "ig" || selectedItem?.type === "igp") ? (
-        <InstagramModal
-          item={selectedItem}
-          onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
-          onStar={() => {
-            if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
-            setSelectedItem((prev) =>
-              prev ? { ...prev, starred: !prev.starred } : null,
-            );
-          }}
-          onCopy={() => {
-            if (selectedItem) {
-              navigator.clipboard.writeText(selectedItem.url);
-              showToast("Instagram link copied!");
-            }
-          }}
-        />
-      ) : (
-        <Modal
-                  item={selectedItem}
-                  isAdmin={true}
-                  defaultEditing={modalDefaultEditing}
-                  onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
-                  onStar={() => {
-                    if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
-                    setSelectedItem((prev) =>
-                      prev ? { ...prev, starred: !prev.starred } : null,
-                    );
-                  }}
-                  onCopy={() => {
-                    if (selectedItem) {
-                      if (selectedItem.type === "li" && selectedItem.title && selectedItem.title !== "LinkedIn Member" && !selectedItem.title.startsWith("http")) {
-                        let copyText = selectedItem.title;
-                        if ((selectedItem as any).company) {
-                          copyText += ` - ${(selectedItem as any).company}`;
-                        }
-                        navigator.clipboard.writeText(copyText);
-                        showToast("Profile details copied!");
-                        return;
+          ) : (
+            <ErrorBoundary fallbackTitle="Item Details Modal Error" onReset={() => { setSelectedItem(null); setModalDefaultEditing(false); }}>
+              <Modal
+                key={selectedItem.id}
+                item={selectedItem}
+                isAdmin={true}
+                defaultEditing={modalDefaultEditing}
+                onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
+                onStar={() => {
+                  if (selectedItem) toggleStar((selectedItem.type || adminTab || "lab") as ItemType, selectedItem.id);
+                  setSelectedItem((prev) =>
+                    prev ? { ...prev, starred: !prev.starred } : null,
+                  );
+                }}
+                onCopy={() => {
+                  if (selectedItem) {
+                    if (selectedItem.type === "li" && selectedItem.title && selectedItem.title !== "LinkedIn Member" && !selectedItem.title.startsWith("http")) {
+                      let copyText = selectedItem.title;
+                      if ((selectedItem as any).company) {
+                        copyText += ` - ${(selectedItem as any).company}`;
                       }
-                      navigator.clipboard.writeText(selectedItem.url);
-                      showToast("Link copied!");
+                      navigator.clipboard.writeText(copyText);
+                      showToast("Profile details copied!");
+                      return;
                     }
-                  }}
-                  onUpdate={async (id, updates) => {
-                    if (selectedItem) {
-                      await updateItem(selectedItem.type, id, updates);
-                      setSelectedItem({ ...selectedItem, ...updates } as any);
-                      showToast("Item updated!");
-                    }
-                  }}
-                />
-      )}
+                    navigator.clipboard.writeText(selectedItem.url);
+                    showToast("Link copied!");
+                  }
+                }}
+                onUpdate={async (id, updates) => {
+                  if (selectedItem) {
+                    const targetType = (updates.type as ItemType) || selectedItem.type || adminTab || "lab";
+                    await updateItem(targetType, id, updates);
+                    setSelectedItem({ ...selectedItem, ...updates, type: targetType } as any);
+                    showToast("Item updated!");
+                  }
+                }}
+              />
+            </ErrorBoundary>
+          )
+        )}
 
         {/* Toast */}
 
       {/* Admin Quick Add Modal Dialog */}
       {showAdminModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
-          <div className="relative w-full max-w-3xl bg-[#0d0d0d] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.9)] text-white max-h-[90vh] flex flex-col my-auto">
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in"
+          onClick={() => setShowAdminModal(false)}
+        >
+          <div 
+            role="dialog"
+            aria-modal="true"
+            aria-label="Save Link / Quick Add"
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-3xl bg-[#0d0d0d] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.9)] text-white max-h-[90vh] flex flex-col my-auto"
+          >
             {/* Header */}
             <div className="flex items-center justify-between pb-5 border-b border-[#27272A] shrink-0">
               <div className="flex items-center gap-3">
@@ -2407,10 +2897,21 @@ function MainApp() {
     );
   }
 
+  if (view === "dashboard") {
+    return (
+      <div className="min-h-screen bg-[#050810] text-white font-sans">
+        <UserDashboard db={db} onSelectItem={handleSelectItem} />
+        {renderActiveModal()}
+        <AuthModal />
+      </div>
+    );
+  }
+
   if (view === "landing") {
     return (
       <Suspense fallback={<div className="min-h-screen bg-gradient-to-b from-[#0B0F19] to-[#050810] flex items-center justify-center text-white/50">Loading...</div>}>
         <LandingPage setView={setView} onSelectTab={(tab) => setCurrentTab(tab as ItemType)} />
+        <AuthModal />
       </Suspense>
     );
   }
@@ -2476,13 +2977,16 @@ function MainApp() {
       <div className="flex-1 relative z-10 max-h-screen overflow-y-auto">
         {/* Header */}
         <header className="sticky top-0 z-20 backdrop-blur-md bg-white/[0.03] border-b border-[#27272A] px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between w-full md:w-auto gap-4">
                 <button
                   onClick={() => setView("landing")}
                   className="md:hidden text-white/60 hover:text-white transition-colors"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
+                <div className="md:hidden">
+                  <UserNav />
+                </div>
             </div>
 
             {/* Mobile Tabs */}
@@ -2502,16 +3006,34 @@ function MainApp() {
                 <div className="relative flex-1 group">
                     <Search className="w-4 h-4 text-white/40 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-fuchsia-400 transition-colors" />
                     <input
-                        className="w-full bg-white/[0.05] border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.03] transition-all"
-                        placeholder="Search your collection..."
+                        className="w-full bg-white/[0.05] border border-white/10 rounded-full pl-10 pr-10 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.03] transition-all"
+                        placeholder="Search across all 13 sections (YouTube, GitHub, Labs...)"
+                        aria-label="Search all sections globally"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setSearchSectionFilter("all");
+                        }}
                     />
+                    {searchQuery && (
+                      <button
+                        onClick={() => {
+                          setSearchQuery("");
+                          setSearchSectionFilter("all");
+                        }}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors p-1"
+                        title="Clear global search"
+                        aria-label="Clear global search"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                 </div>
                 
                 <div className="relative shrink-0 flex items-center">
                     <input
                         type="date"
+                        aria-label="Filter by date added"
                         className="bg-white/[0.05] border border-white/10 rounded-full px-3 py-2 pl-9 text-sm text-slate-200 focus:text-white focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.03] transition-all [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 cursor-pointer"
                         value={searchDate}
                         onChange={(e) => setSearchDate(e.target.value)}
@@ -2529,6 +3051,12 @@ function MainApp() {
                 >
                     <Star className="w-4 h-4" fill={showStarredOnly ? "currentColor" : "none"} />
                 </button>
+
+                <div className="hidden sm:block w-px h-5 bg-white/10 shrink-0"></div>
+
+                <div className="hidden md:flex items-center shrink-0">
+                  <UserNav />
+                </div>
             </div>
 
 
@@ -2538,18 +3066,33 @@ function MainApp() {
         <main className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto min-h-screen">
              <div className="mb-8 flex flex-col gap-6">
                  <div>
-                     <h2 className="text-3xl font-display font-bold text-white mb-2">
-                        {currentTab === "yt" ? "YouTube Videos" : currentTab === "ys" ? "YouTube Shorts" : currentTab === "lp" ? "LinkedIn Posts" : currentTab === "tw" ? "Twitter/X Posts" : currentTab === "blog" ? "Articles & Blogs" : currentTab === "email" ? "Job Contacts" : currentTab === "git" ? "GitHub Repositories" : currentTab === "ig" ? "Instagram Reels" : currentTab === "igp" ? "Instagram Posts" : ""}
+                     <h2 className="text-3xl font-display font-bold text-white mb-2 flex items-center gap-3">
+                        {searchQuery.trim() ? (
+                          <>
+                            <Sparkles className="w-8 h-8 text-fuchsia-400 shrink-0 animate-pulse" />
+                            <span>Global Search Results</span>
+                          </>
+                        ) : (
+                          currentTab === "yt" ? "YouTube Videos" : currentTab === "ys" ? "YouTube Shorts" : currentTab === "ypl" ? "YouTube Playlists" : currentTab === "lp" ? "LinkedIn Posts" : currentTab === "tw" ? "Twitter/X Posts" : currentTab === "blog" ? "Articles & Blogs" : currentTab === "email" ? "Job Contacts" : currentTab === "git" ? "GitHub Repositories" : currentTab === "ig" ? "Instagram Reels" : currentTab === "igp" ? "Instagram Posts" : currentTab === "lab" ? "Hands-on Labs" : currentTab === "web" ? "Developer Resources" : currentTab === "th" ? "Threads Posts" : ""
+                        )}
                      </h2>
                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-white/50">
-                        <p>Your curated collection of {currentTab === "lp" || currentTab === "tw" ? "posts" : currentTab === "git" ? "repositories" : "items"}.</p>
-                        
-                        <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-black/20/20"></div>
-                        
-                        <div className="flex items-center gap-4 text-sm font-medium">
-                            <span className="flex items-center gap-1.5"><LayoutGrid className="w-4 h-4 text-white/40" /> {db[currentTab]?.length || 0} Total</span>
-                            <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-400/70" /> {db[currentTab]?.filter((i: any) => i.starred)?.length || 0} Starred</span>
-                        </div>
+                        {searchQuery.trim() ? (
+                          <p>
+                            Searching across all 13 sections of DevOps Store for "<span className="text-white font-medium">{searchQuery}</span>".
+                          </p>
+                        ) : (
+                          <>
+                            <p>Your curated collection of {currentTab === "lp" || currentTab === "tw" ? "posts" : currentTab === "git" ? "repositories" : "items"}.</p>
+                            
+                            <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-white/20"></div>
+                            
+                            <div className="flex items-center gap-4 text-sm font-medium">
+                                <span className="flex items-center gap-1.5"><LayoutGrid className="w-4 h-4 text-white/40" /> {db[currentTab]?.length || 0} Total</span>
+                                <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-400/70" /> {db[currentTab]?.filter((i: any) => i.starred)?.length || 0} Starred</span>
+                            </div>
+                          </>
+                        )}
                      </div>
                  </div>
 
@@ -2558,9 +3101,19 @@ function MainApp() {
                         <span className="text-xs font-semibold text-white/40 uppercase tracking-wider shrink-0">Active Filters:</span>
                         <div className="flex flex-wrap items-center gap-2">
                             {searchQuery && (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-fuchsia-500/10 border border-orange-500/20 text-fuchsia-400 text-xs font-medium">
-                                    Search: "{searchQuery}"
-                                    <button onClick={() => setSearchQuery("")} className="hover:text-white ml-1 transition-colors"><X className="w-3 h-3" /></button>
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 border border-fuchsia-500/30 text-fuchsia-300 text-xs font-medium shadow-sm">
+                                    <Sparkles className="w-3 h-3 text-fuchsia-400" />
+                                    Global Search: "{searchQuery}"
+                                    <button 
+                                      onClick={() => {
+                                        setSearchQuery("");
+                                        setSearchSectionFilter("all");
+                                      }} 
+                                      className="hover:text-white ml-1 transition-colors cursor-pointer"
+                                      aria-label="Clear search"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
                                 </span>
                             )}
                             {selectedIGTag && (
@@ -2618,7 +3171,7 @@ function MainApp() {
                     </div>
                  )}
                  
-                 {currentTab === "lp" && (
+                 {!searchQuery && currentTab === "lp" && (
                     <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
                       <div className="flex items-center gap-2 font-medium text-sm">
                         <span className="text-fuchsia-400 shrink-0 mr-2 flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Trending</span>
@@ -2635,7 +3188,7 @@ function MainApp() {
                     </div>
                  )}
 
-                  {currentTab === "lab" && (
+                  {!searchQuery && currentTab === "lab" && (
                     <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
                       <div className="flex items-center gap-2 font-medium text-sm">
                         <span className="text-amber-400 shrink-0 mr-2 flex items-center gap-1.5"><Terminal className="w-4 h-4" /> Lab Filters</span>
@@ -2655,7 +3208,7 @@ function MainApp() {
                     </div>
                   )}
 
-                  {currentTab === "web" && (
+                  {!searchQuery && currentTab === "web" && (
                     <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
                       <div className="flex items-center gap-2 font-medium text-sm">
                         <span className="text-blue-400 shrink-0 mr-2 flex items-center gap-1.5"><Globe2 className="w-4 h-4" /> Categories</span>
@@ -2675,7 +3228,7 @@ function MainApp() {
                     </div>
                   )}
 
-                  {(currentTab === "ig" || currentTab === "igp") && (
+                  {!searchQuery && (currentTab === "ig" || currentTab === "igp") && (
                     <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
                       <div className="flex items-center gap-2 font-medium text-sm">
                         <span className="text-pink-400 shrink-0 mr-2 flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Topics & Tags</span>
@@ -2702,111 +3255,21 @@ function MainApp() {
         </main>
       </div>
 
-      {selectedItem?.type === "th" ? (() => {
-        const thItems = db.th || [];
-        const currentIdx = thItems.findIndex((x) => x.id === selectedItem.id);
-        const hasPrev = currentIdx > 0;
-        const hasNext = currentIdx >= 0 && currentIdx < thItems.length - 1;
-
-        return (
-          <ThreadsModal
-            item={selectedItem}
-            currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
-            totalCount={thItems.length > 0 ? thItems.length : undefined}
-            onPrev={hasPrev ? () => setSelectedItem(thItems[currentIdx - 1]) : undefined}
-            onNext={hasNext ? () => setSelectedItem(thItems[currentIdx + 1]) : undefined}
-            onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
-            onStar={() => {
-              if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
-              setSelectedItem((prev) =>
-                prev ? { ...prev, starred: !prev.starred } : null,
-              );
-            }}
-            onCopy={() => {
-              if (selectedItem) {
-                navigator.clipboard.writeText(selectedItem.url);
-                showToast("Threads link copied!");
-              }
-            }}
-          />
-        );
-      })() : (selectedItem?.type === "ig" || selectedItem?.type === "igp") ? (() => {
-        const igItems = (currentTab === "ig" || currentTab === "igp")
-          ? (db[currentTab] || [])
-          : [...(db.ig || []), ...(db.igp || [])];
-        const currentIdx = igItems.findIndex((x) => x.id === selectedItem.id);
-        const hasPrev = currentIdx > 0;
-        const hasNext = currentIdx >= 0 && currentIdx < igItems.length - 1;
-
-        return (
-          <InstagramModal
-            item={selectedItem}
-            currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
-            totalCount={igItems.length > 0 ? igItems.length : undefined}
-            onPrev={hasPrev ? () => setSelectedItem(igItems[currentIdx - 1]) : undefined}
-            onNext={hasNext ? () => setSelectedItem(igItems[currentIdx + 1]) : undefined}
-            onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
-            onChangeType={isAdminAuth ? (newType) => {
-              if (selectedItem) {
-                updateItem(selectedItem.type, selectedItem.id, { type: newType });
-                setSelectedItem((prev) => prev ? { ...prev, type: newType } : null);
-                showToast(`Moved to ${newType === "ig" ? "Instagram Reels" : "Instagram Posts"}`);
-              }
-            } : undefined}
-            onStar={() => {
-              if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
-              setSelectedItem((prev) =>
-                prev ? { ...prev, starred: !prev.starred } : null,
-              );
-            }}
-            onCopy={() => {
-              if (selectedItem) {
-                navigator.clipboard.writeText(selectedItem.url);
-                showToast("Instagram link copied!");
-              }
-            }}
-          />
-        );
-      })() : (
-        <Modal
-                item={selectedItem}
-                defaultEditing={modalDefaultEditing}
-                onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
-                onStar={() => {
-                  if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
-                  setSelectedItem((prev) =>
-                    prev ? { ...prev, starred: !prev.starred } : null,
-                  );
-                }}
-                onCopy={() => {
-                  if (selectedItem) {
-                    if (selectedItem.type === "li" && selectedItem.title && selectedItem.title !== "LinkedIn Member" && !selectedItem.title.startsWith("http")) {
-                      let copyText = selectedItem.title;
-                      if ((selectedItem as any).company) {
-                        copyText += ` - ${(selectedItem as any).company}`;
-                      }
-                      navigator.clipboard.writeText(copyText);
-                      showToast("Profile details copied!");
-                      return;
-                    }
-                    navigator.clipboard.writeText(selectedItem.url);
-                    showToast("Link copied!");
-                  }
-                }}
-                onUpdate={async (id, updates) => {
-                  if (selectedItem) {
-                    await updateItem(selectedItem.type, id, updates);
-                    setSelectedItem({ ...selectedItem, ...updates } as any);
-                    showToast("Item updated!");
-                  }
-                }}
-              />
-      )}
+      {renderActiveModal()}
 
       {/* Admin Quick Add Modal Dialog */}
       {showAdminModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
-          <div className="relative w-full max-w-3xl bg-[#0d0d0d] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.9)] text-white max-h-[90vh] flex flex-col my-auto">
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in"
+          onClick={() => setShowAdminModal(false)}
+        >
+          <div 
+            role="dialog"
+            aria-modal="true"
+            aria-label="Save Link / Quick Add"
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-3xl bg-[#0d0d0d] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.9)] text-white max-h-[90vh] flex flex-col my-auto"
+          >
             {/* Header */}
             <div className="flex items-center justify-between pb-5 border-b border-[#27272A] shrink-0">
               <div className="flex items-center gap-3">
@@ -3068,6 +3531,9 @@ function MainApp() {
       </div>
 
       
+      {/* Global Auth Modal for Protected Content & Logins */}
+      <AuthModal />
+
       {/* Custom Keyframes for Animations */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes fadeInUp {

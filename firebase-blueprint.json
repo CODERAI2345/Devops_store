@@ -6,32 +6,115 @@
       "type": "object",
       "properties": {
         "id": { "type": "number" },
-        "type": { "type": "string", "enum": ["yt", "ys", "li", "lp", "job", "blog", "email", "tw", "git", "ig", "igp", "th", "lab", "web"] },
+        "type": { "type": "string", "enum": ["yt", "ys", "ypl", "li", "lp", "job", "blog", "email", "tw", "git", "ig", "igp", "th", "lab", "web"] },
         "url": { "type": "string" },
         "title": { "type": "string" },
         "author": { "type": "string" },
         "description": { "type": "string" },
         "tags": { "type": "array", "items": { "type": "string" } },
         "starred": { "type": "boolean" },
+        "isProtected": { "type": "boolean" },
         "company": { "type": "string" },
         "location": { "type": "string" },
         "role": { "type": "string" },
         "thumbnail": { "type": "string" },
         "vid": { "type": "string" },
+        "pid": { "type": "string" },
+        "count": { "type": "number" },
+        "videoList": { "type": "array", "items": { "type": "string" } },
+        "progressStatus": { "type": "string" },
         "date": { "type": "string" },
         "ts": { "type": "number" },
         "shortcode": { "type": "string" },
         "videoUrl": { "type": "string" },
         "images": { "type": "array", "items": { "type": "string" } },
-        "media": { "type": "array" }
+        "media": { "type": "array" },
+        "platform": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "duration": { "type": "string" },
+        "domain": { "type": "string" },
+        "favicon": { "type": "string" },
+        "notes": { "type": "string" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "topics": { "type": "array", "items": { "type": "string" } },
+        "postType": { "type": "string" },
+        "stars": { "type": "number" },
+        "forks": { "type": "number" },
+        "language": { "type": "string" }
       },
       "required": ["id", "type", "url", "title", "ts"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with optional mobile number and authentication provider.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "mobile_number": { "type": "string" },
+        "provider": { "type": "string", "enum": ["github", "google", "phone", "password"] },
+        "createdAt": { "type": "object" }
+      },
+      "required": ["uid", "name", "provider"]
+    },
+    "UserProgress": {
+      "title": "UserProgress",
+      "description": "Track completion state of learning topics and labs for each user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "itemId": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "completedAt": { "type": "object" }
+      },
+      "required": ["userId", "itemId", "completed"]
+    },
+    "UserBookmark": {
+      "title": "UserBookmark",
+      "description": "User bookmarked item shortcuts.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "itemId": { "type": "string" },
+        "createdAt": { "type": "object" }
+      },
+      "required": ["userId", "itemId"]
+    },
+    "AnalyticsEvent": {
+      "title": "AnalyticsEvent",
+      "description": "User interaction analytics events.",
+      "type": "object",
+      "properties": {
+        "eventType": { "type": "string", "enum": ["view", "like", "tab_click", "copy", "page_view", "topic_completed", "bookmark_added"] },
+        "sessionId": { "type": "string" },
+        "timestamp": { "type": "object" },
+        "itemId": { "type": "string" },
+        "itemTitle": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["eventType", "sessionId"]
     }
   },
   "firestore": {
     "/public_items/{itemId}": {
       "schema": { "$ref": "#/entities/HubItem" },
       "description": "Public saved items."
+    },
+    "/user_profiles/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profiles."
+    },
+    "/user_progress/{progressId}": {
+      "schema": { "$ref": "#/entities/UserProgress" },
+      "description": "User completion progress records."
+    },
+    "/user_bookmarks/{bookmarkId}": {
+      "schema": { "$ref": "#/entities/UserBookmark" },
+      "description": "User saved bookmarks."
+    },
+    "/analytics/{eventId}": {
+      "schema": { "$ref": "#/entities/AnalyticsEvent" },
+      "description": "User interaction event logs."
     }
   }
 }

@@ -54,6 +54,15 @@ export function ThreadsModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onPrev, onNext, onClose, mediaList.length]);
 
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   if (!item) return null;
 
   const cleanDescription = item.description &&
@@ -114,6 +123,9 @@ export function ThreadsModal({
 
       {/* Modal Dialog Card */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={item.title || "Threads Post"}
         className="relative w-full max-w-[480px] max-h-[92vh] bg-[#070913] border border-white/15 rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 z-10 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >

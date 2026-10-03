@@ -422,18 +422,59 @@ async function startServer() {
     }
   });
 
+  // High-quality SVG cover generator for playlists if thumbnail is missing
+  function generatePlaylistSvgDataUri(title: string, author?: string, count?: string | number) {
+    const safeTitle = (title || "YouTube Playlist").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").slice(0, 48);
+    const safeAuthor = (author || "Curated Series").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").slice(0, 36);
+    const countStr = count ? `${count} Videos` : "Full Series";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#180B24"/>
+          <stop offset="50%" stop-color="#0F051D"/>
+          <stop offset="100%" stop-color="#05010B"/>
+        </linearGradient>
+        <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#EF4444"/>
+          <stop offset="50%" stop-color="#F43F5E"/>
+          <stop offset="100%" stop-color="#8B5CF6"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="450" fill="url(#bg)"/>
+      <rect x="0" y="0" width="800" height="4" fill="url(#glow)"/>
+      <rect x="520" y="100" width="220" height="250" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)" transform="rotate(8 630 225)"/>
+      <rect x="500" y="100" width="220" height="250" rx="16" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.12)" transform="rotate(4 610 225)"/>
+      <rect x="480" y="100" width="220" height="250" rx="16" fill="#1C1028" stroke="rgba(239,68,68,0.3)"/>
+      <circle cx="590" cy="225" r="48" fill="#EF4444" opacity="0.15"/>
+      <polygon points="582,207 608,225 582,243" fill="#EF4444"/>
+      <g transform="translate(60, 110)">
+        <rect x="0" y="0" width="144" height="28" rx="14" fill="#EF4444" opacity="0.2"/>
+        <rect x="0" y="0" width="144" height="28" rx="14" fill="none" stroke="#EF4444" stroke-opacity="0.4"/>
+        <text x="72" y="18" fill="#FCA5A5" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="1">YOUTUBE PLAYLIST</text>
+        <text x="0" y="70" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700">${safeTitle}</text>
+        <text x="0" y="115" fill="#A1A1AA" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="500">${safeAuthor}</text>
+        <rect x="0" y="150" width="110" height="28" rx="6" fill="rgba(255,255,255,0.08)"/>
+        <text x="55" y="168" fill="#E4E4E7" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" text-anchor="middle">▶ ${countStr}</text>
+      </g>
+    </svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  }
+
   // Dedicated YouTube & YouTube Playlist metadata endpoint
   app.get("/api/youtube-meta", async (req, res) => {
     try {
       const targetUrl = req.query.url as string;
+      const forceRefresh = req.query.force === "true";
       if (!targetUrl) {
         return res.status(400).json({ error: "Missing url parameter" });
       }
 
       const cacheKey = `yt_${targetUrl}`;
-      const cached = getCached(cacheKey);
-      if (cached) {
-        return res.json({ success: true, data: cached });
+      if (!forceRefresh) {
+        const cached = getCached(cacheKey);
+        if (cached && cached.thumbnail && !cached.thumbnail.includes("placeholder")) {
+          return res.json({ success: true, data: cached });
+        }
       }
 
       let parsedPid = "";
@@ -459,58 +500,109 @@ async function startServer() {
       let title = parsedPid ? "YouTube Playlist" : "YouTube Video";
       let author = "";
       let thumbnail = "";
+      let videoCount: string | number = "";
+      let videoList: string[] = [];
 
-      // 1. Try official YouTube oEmbed first (fast & reliable)
-      try {
-        const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(targetUrl)}&format=json`;
-        const oembedRes = await fetch(oembedUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-          },
-        });
-        if (oembedRes.ok) {
-          const oembedData = await oembedRes.json();
-          if (oembedData.title) title = oembedData.title;
-          if (oembedData.author_name) author = oembedData.author_name;
-          if (oembedData.thumbnail_url) thumbnail = oembedData.thumbnail_url;
-        }
-      } catch (oembedErr) {
-        console.warn("YouTube oEmbed fetch error:", oembedErr);
+      // If URL itself includes videoId (e.g. watch?v=...&list=...), we have the video thumbnail immediately
+      if (parsedVid) {
+        thumbnail = `https://img.youtube.com/vi/${parsedVid}/hqdefault.jpg`;
       }
 
-      // 2. If thumbnail is missing, construct fallback
-      if (!thumbnail) {
-        if (parsedVid) {
-          thumbnail = `https://img.youtube.com/vi/${parsedVid}/hqdefault.jpg`;
-        } else if (parsedPid) {
-          thumbnail = `https://img.youtube.com/vi/placeholder/hqdefault.jpg`;
-        }
-      }
-
-      // 3. If title is still generic and we have a playlist, try scraping YouTube HTML meta tags
-      if (parsedPid && (!title || title === "YouTube Playlist")) {
+      // If this is a Playlist (has list= param)
+      if (parsedPid) {
         try {
-          const pageRes = await fetch(`https://www.youtube.com/playlist?list=${parsedPid}`, {
+          const playlistPageUrl = `https://www.youtube.com/playlist?list=${parsedPid}`;
+          const pageRes = await fetch(playlistPageUrl, {
             headers: {
               "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
               "Accept-Language": "en-US,en;q=0.9",
+              "Cookie": "CONSENT=YES+cb.20210328-17-p0.en+FX+478; SOCS=CAESEwgDEgk0ODEzNzk5NDIaAmVuIAEaBgiA_LyaBg;",
             },
           });
+
           if (pageRes.ok) {
             const html = await pageRes.text();
+
+            // 1. Title
             const ogTitle = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)?.[1]
               || html.match(/<meta\s+name=["']title["']\s+content=["']([^"']+)["']/i)?.[1]
               || html.match(/<title>([^<]+)<\/title>/i)?.[1];
             if (ogTitle) {
-              title = ogTitle.replace(/\s*-\s*YouTube$/i, "").trim();
+              const clean = ogTitle.replace(/\s*-\s*YouTube$/i, "").trim();
+              if (clean && clean !== "undefined") {
+                title = clean;
+              }
             }
-            const ogImg = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)?.[1];
-            if (ogImg && (!thumbnail || thumbnail.includes("placeholder"))) {
-              thumbnail = ogImg;
+
+            // 2. Channel Author
+            const authorMatch = html.match(/"ownerText":\{"runs":\[\{"text":"([^"]+)"/)?.[1]
+              || html.match(/"channelTitle":"([^"]+)"/)?.[1]
+              || html.match(/"url":"\/@([^"?/]+)"/)?.[1]
+              || html.match(/<link\s+itemprop="name"\s+content="([^"]+)"/)?.[1]
+              || "";
+            if (authorMatch && authorMatch !== "undefined") {
+              author = authorMatch.trim();
+            }
+
+            // 3. Extract Video IDs
+            const vidMatches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)].map((m) => m[1]);
+            const uniqueVids = [...new Set(vidMatches)];
+            if (uniqueVids.length > 0) {
+              videoList = uniqueVids.slice(0, 30);
+              const firstVid = uniqueVids[0];
+              if (!parsedVid) {
+                parsedVid = firstVid;
+              }
+              // The first video thumbnail is the definitive thumbnail of the playlist!
+              thumbnail = `https://img.youtube.com/vi/${firstVid}/hqdefault.jpg`;
+            }
+
+            // 4. Video count
+            const countMatch = html.match(/"numVideosText":\{"runs":\[\{"text":"([^"]+)"/)?.[1]
+              || html.match(/"stats":\[\{"runs":\[\{"text":"([^"]+)"/)?.[1];
+            if (countMatch) {
+              videoCount = countMatch.replace(/[^0-9]/g, "") || countMatch;
+            } else if (uniqueVids.length > 0) {
+              videoCount = uniqueVids.length;
+            }
+
+            // 5. Fallback og:image if video ID thumbnail wasn't found
+            if (!thumbnail) {
+              const ogImg = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)?.[1];
+              if (ogImg && !ogImg.includes("undefined")) {
+                thumbnail = ogImg.replace(/&amp;/g, "&");
+              }
             }
           }
         } catch (scrapeErr) {
-          console.warn("YouTube HTML scrape fallback error:", scrapeErr);
+          console.warn("YouTube playlist scrape error:", scrapeErr);
+        }
+      } else {
+        // Single video oEmbed
+        try {
+          const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(targetUrl)}&format=json`;
+          const oembedRes = await fetch(oembedUrl, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            },
+          });
+          if (oembedRes.ok) {
+            const oembedData = await oembedRes.json();
+            if (oembedData.title) title = oembedData.title;
+            if (oembedData.author_name) author = oembedData.author_name;
+            if (oembedData.thumbnail_url) thumbnail = oembedData.thumbnail_url;
+          }
+        } catch (oembedErr) {
+          console.warn("YouTube oEmbed fetch error:", oembedErr);
+        }
+      }
+
+      // If thumbnail is still missing or a placeholder, generate our SVG cover
+      if (!thumbnail || thumbnail.includes("placeholder")) {
+        if (parsedVid) {
+          thumbnail = `https://img.youtube.com/vi/${parsedVid}/hqdefault.jpg`;
+        } else {
+          thumbnail = generatePlaylistSvgDataUri(title, author, videoCount);
         }
       }
 
@@ -520,6 +612,8 @@ async function startServer() {
         thumbnail,
         pid: parsedPid || undefined,
         vid: parsedVid || undefined,
+        count: videoCount || (videoList.length ? videoList.length : undefined),
+        videoList: videoList.length ? videoList : undefined,
       };
 
       setCached(cacheKey, result);

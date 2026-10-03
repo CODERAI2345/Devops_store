@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
             'vendor-motion': ['motion'],
             'vendor-icons': ['lucide-react'],
+            'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
             'vendor-utils': ['xlsx', 'embla-carousel-react']
           }
         }
@@ -35,6 +36,7 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: './src/setupTests.ts',
+      passWithNoTests: true,
     },
   };
 });

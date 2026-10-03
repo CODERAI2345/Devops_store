@@ -12,8 +12,12 @@ const COLLECTION_MAP: Record<string, string> = {
   "li": "LinkedIn Profiles",
   "blog": "Blogs",
   "email": "Emails",
-  
-  "git": "GitHub Repos"
+  "git": "GitHub Repos",
+  "ig": "Instagram Reels",
+  "igp": "Instagram Posts",
+  "th": "Threads Posts",
+  "web": "Developer Resources",
+  "lab": "Hands-on Labs"
 };
 
 export default function AdminExport() {
@@ -21,7 +25,13 @@ export default function AdminExport() {
   const [selectedCollection, setSelectedCollection] = useState<string>('');
   const [isExportingSingle, setIsExportingSingle] = useState(false);
   const [isExportingAll, setIsExportingAll] = useState(false);
+  const [statusNotice, setStatusNotice] = useState<{ msg: string; err?: boolean } | null>(null);
   const navigate = useNavigate();
+
+  const showNotice = (msg: string, err = false) => {
+    setStatusNotice({ msg, err });
+    setTimeout(() => setStatusNotice(null), 4000);
+  };
 
   const handleExportSingle = async () => {
     if (!selectedCollection || !db) return;
@@ -32,19 +42,25 @@ export default function AdminExport() {
 
     const data = db[selectedCollection as keyof typeof db] || [];
     if (data.length === 0) {
-      alert("This collection is empty.");
+      showNotice("This collection is empty. Nothing to export.", true);
       setIsExportingSingle(false);
       return;
     }
 
-    const XLSX = await import("xlsx");
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    const sheetName = (COLLECTION_MAP[selectedCollection] || selectedCollection).substring(0, 31);
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-    
-    XLSX.writeFile(workbook, `${sheetName.replace(/ /g, '_')}_Export.xlsx`);
-    setIsExportingSingle(false);
+    try {
+      const XLSX = await import("xlsx");
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      const sheetName = (COLLECTION_MAP[selectedCollection] || selectedCollection).substring(0, 31);
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      
+      XLSX.writeFile(workbook, `${sheetName.replace(/ /g, '_')}_Export.xlsx`);
+      showNotice("Collection exported successfully!");
+    } catch (e: any) {
+      showNotice(`Export failed: ${e.message || "Unknown error"}`, true);
+    } finally {
+      setIsExportingSingle(false);
+    }
   };
 
   const handleExportAll = async () => {
@@ -54,27 +70,33 @@ export default function AdminExport() {
     // Small delay to allow UI to show loading state
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    const XLSX = await import("xlsx");
-    const workbook = XLSX.utils.book_new();
-    let hasData = false;
-    
-    for (const [key, name] of Object.entries(COLLECTION_MAP)) {
-      const data = db[key as keyof typeof db] || [];
-      if (data.length > 0) {
-        hasData = true;
-        const worksheet = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.book_append_sheet(workbook, worksheet, name.substring(0, 31));
+    try {
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.utils.book_new();
+      let hasData = false;
+      
+      for (const [key, name] of Object.entries(COLLECTION_MAP)) {
+        const data = db[key as keyof typeof db] || [];
+        if (data.length > 0) {
+          hasData = true;
+          const worksheet = XLSX.utils.json_to_sheet(data);
+          XLSX.utils.book_append_sheet(workbook, worksheet, name.substring(0, 31));
+        }
       }
-    }
-    
-    if (!hasData) {
-       alert("No data available to export.");
-       setIsExportingAll(false);
-       return;
-    }
+      
+      if (!hasData) {
+        showNotice("No data available across any collection to export.", true);
+        setIsExportingAll(false);
+        return;
+      }
 
-    XLSX.writeFile(workbook, `Complete_Admin_Export.xlsx`);
-    setIsExportingAll(false);
+      XLSX.writeFile(workbook, `Complete_Admin_Export.xlsx`);
+      showNotice("All collections exported successfully!");
+    } catch (e: any) {
+      showNotice(`Global export failed: ${e.message || "Unknown error"}`, true);
+    } finally {
+      setIsExportingAll(false);
+    }
   };
 
   if (isInitialLoading || !db) return <div className="min-h-screen bg-white/[0.03] flex items-center justify-center text-white"><Loader2 className="w-8 h-8 animate-spin text-fuchsia-400" /></div>;
@@ -93,6 +115,13 @@ export default function AdminExport() {
               <strong>Preview Restriction:</strong> Your browser restricts file downloads from inside this preview window.<br/>
               To export data, please click the <strong>"Open app in new tab"</strong> button at the top right of the preview pane.
             </p>
+          </div>
+        )}
+
+        {statusNotice && (
+          <div className={`p-4 rounded-xl flex items-center gap-3 border ${statusNotice.err ? "bg-red-500/10 border-red-500/30 text-red-300" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"}`}>
+            {statusNotice.err ? <AlertCircle className="w-5 h-5 shrink-0" /> : <Check className="w-5 h-5 shrink-0" />}
+            <span className="text-sm font-medium">{statusNotice.msg}</span>
           </div>
         )}
 

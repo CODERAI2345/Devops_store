@@ -13,11 +13,62 @@ export function ytId(url: string) {
 
 export function ytPlaylistId(url: string) {
   try {
-    const u = new URL(url);
+    const raw = url.trim();
+    const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
     return u.searchParams.get("list") || null;
   } catch (e) {
-    return null;
+    const m = url.match(/[?&]list=([^&#]+)/i);
+    return m ? m[1] : null;
   }
+}
+
+export function getPlaylistThumbnail(item: { url?: string; thumbnail?: string; vid?: string; pid?: string; title?: string; author?: string; count?: any }): string {
+  if (item.thumbnail && !item.thumbnail.includes("placeholder") && !item.thumbnail.includes("placehold.co")) {
+    return item.thumbnail;
+  }
+  if (item.vid) {
+    return `https://img.youtube.com/vi/${item.vid}/hqdefault.jpg`;
+  }
+  if (item.url) {
+    const extractedVid = ytId(item.url);
+    if (extractedVid) {
+      return `https://img.youtube.com/vi/${extractedVid}/hqdefault.jpg`;
+    }
+  }
+  const safeTitle = (item.title || "YouTube Playlist").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").slice(0, 48);
+  const safeAuthor = (item.author || "Curated Series").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").slice(0, 36);
+  const countStr = item.count ? `${item.count} Videos` : "Full Series";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+    <defs>
+      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#180B24"/>
+        <stop offset="50%" stop-color="#0F051D"/>
+        <stop offset="100%" stop-color="#05010B"/>
+      </linearGradient>
+      <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#EF4444"/>
+        <stop offset="50%" stop-color="#F43F5E"/>
+        <stop offset="100%" stop-color="#8B5CF6"/>
+      </linearGradient>
+    </defs>
+    <rect width="800" height="450" fill="url(#bg)"/>
+    <rect x="0" y="0" width="800" height="4" fill="url(#glow)"/>
+    <rect x="520" y="100" width="220" height="250" rx="16" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)" transform="rotate(8 630 225)"/>
+    <rect x="500" y="100" width="220" height="250" rx="16" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.12)" transform="rotate(4 610 225)"/>
+    <rect x="480" y="100" width="220" height="250" rx="16" fill="#1C1028" stroke="rgba(239,68,68,0.3)"/>
+    <circle cx="590" cy="225" r="48" fill="#EF4444" opacity="0.15"/>
+    <polygon points="582,207 608,225 582,243" fill="#EF4444"/>
+    <g transform="translate(60, 110)">
+      <rect x="0" y="0" width="144" height="28" rx="14" fill="#EF4444" opacity="0.2"/>
+      <rect x="0" y="0" width="144" height="28" rx="14" fill="none" stroke="#EF4444" stroke-opacity="0.4"/>
+      <text x="72" y="18" fill="#FCA5A5" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="1">YOUTUBE PLAYLIST</text>
+      <text x="0" y="70" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700">${safeTitle}</text>
+      <text x="0" y="115" fill="#A1A1AA" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="500">${safeAuthor}</text>
+      <rect x="0" y="150" width="110" height="28" rx="6" fill="rgba(255,255,255,0.08)"/>
+      <text x="55" y="168" fill="#E4E4E7" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" text-anchor="middle">▶ ${countStr}</text>
+    </g>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 export function parseSlug(url: string, type: "li" | "lp") {
@@ -114,7 +165,13 @@ export function classifyUrl(u: string): "yt" | "ys" | "ypl" | "li" | "lp" | "tw"
   }
   const l = u.toLowerCase();
   if (l.includes("github.com") && l.split("/").length >= 4) return "git";
-  if (l.includes("youtube.com/playlist") || (l.includes("youtube.com") && (l.includes("list=") || l.includes("&list=")))) return "ypl";
+  if (
+    l.includes("playlist?list=") ||
+    l.includes("/playlist/") ||
+    l.includes("youtube.com/playlist") ||
+    ((l.includes("youtube.com") || l.includes("youtu.be")) && (l.includes("list=") || l.includes("&list=")))
+  )
+    return "ypl";
   if (l.includes("youtube.com/shorts/")) return "ys";
   if (l.includes("youtube.com/watch") || l.includes("youtu.be/")) return "yt";
   if (l.includes("linkedin.com/in/")) return "li";

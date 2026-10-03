@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { HubDB, ItemType, HubItem } from "../types";
 import { db, auth } from "../firebase";
 import { SEED_THREADS_ITEMS } from "../data/seedThreads";
-import { isThreadsUrl, isInstagramReelUrl } from "../utils";
+import { isThreadsUrl, isInstagramReelUrl, ytPlaylistId } from "../utils";
 import {
   collection,
   onSnapshot,
@@ -69,6 +69,13 @@ function getInitialDb(): { db: HubDB; hasCache: boolean } {
     if (cached) {
       const parsed = JSON.parse(cached) as HubDB;
       if (parsed && typeof parsed === "object" && Array.isArray(parsed.yt)) {
+        if (!parsed.ypl) parsed.ypl = [];
+        // Normalize any playlists that might be stuck in yt in localStorage cache
+        const stuckPlaylists = parsed.yt.filter((x: any) => (x.type === "ypl") || x.pid || (x.url && (x.url.includes("list=") || x.url.includes("/playlist"))));
+        if (stuckPlaylists.length > 0) {
+          parsed.yt = parsed.yt.filter((x: any) => x.type !== "ypl" && !x.pid && (!x.url || (!x.url.includes("list=") && !x.url.includes("/playlist"))));
+          parsed.ypl = [...parsed.ypl, ...stuckPlaylists.map(x => ({ ...x, type: "ypl" as const }))];
+        }
         return { db: parsed, hasCache: true };
       }
     }
@@ -125,8 +132,15 @@ export function useCentralHub() {
         snap.docs.forEach((docSnap) => {
           const data = docSnap.data() as HubItem;
           // In-memory normalization - zero network writes during snapshot reads
-          if (data.type === "yt" && (data as any).pid) {
+          if (
+            data.type === "ypl" ||
+            ((data.type === "yt" || (data as any).type === "web" || !(data as any).type) &&
+              ((data as any).pid || (data.url && (data.url.includes("list=") || data.url.includes("/playlist")))))
+          ) {
             (data as any).type = "ypl";
+            if (!(data as any).pid && data.url) {
+              (data as any).pid = ytPlaylistId(data.url) || "";
+            }
           } else if (
             (data.type === "igp" || data.type === "web" || !data.type) &&
             data.url &&
@@ -136,6 +150,10 @@ export function useCentralHub() {
             (data as any).type = "ig";
           } else if ((data.type === "web" || !data.type) && data.url && isThreadsUrl(data.url)) {
             (data as any).type = "th";
+          }
+
+          if (data.isProtected === undefined) {
+            data.isProtected = (data.type === 'lab' && (data as any).difficulty === 'Advanced');
           }
 
           if (newDb[data.type]) {
@@ -183,10 +201,21 @@ export function useCentralHub() {
       });
 
       try {
-        const toSave = { ...item };
-        if (toSave.type === "ypl") {
-          toSave.type = "yt" as any;
-        }
+        const sanitizeForFirestore = (obj: any): any => {
+          const cleaned: any = {};
+          for (const [k, v] of Object.entries(obj)) {
+            if (v === undefined) {
+              continue;
+            }
+            if (v && typeof v === "object" && !Array.isArray(v)) {
+              cleaned[k] = sanitizeForFirestore(v);
+            } else {
+              cleaned[k] = v;
+            }
+          }
+          return cleaned;
+        };
+        const toSave = sanitizeForFirestore(item);
         await setDoc(doc(db, `public_items`, item.id.toString()), toSave);
       } catch (e) {
         console.error(e);
@@ -287,8 +316,9 @@ export function useCentralHub() {
     async (type: ItemType, id: number | string, updates: Partial<HubItem>) => {
       // Optimistic update
       setHubDb((prev) => {
-        if (updates.type && updates.type !== type) {
-          const oldList = prev[type] || [];
+        const resolvedType = type || (updates.type as ItemType) || (Object.keys(prev) as ItemType[]).find((k) => (prev[k] || []).some((x) => String(x.id) === String(id))) || "lab";
+        if (updates.type && updates.type !== resolvedType) {
+          const oldList = prev[resolvedType] || [];
           const itemToMove = oldList.find((x) => String(x.id) === String(id));
           if (itemToMove) {
             const updatedItem = { ...itemToMove, ...updates };
@@ -296,25 +326,36 @@ export function useCentralHub() {
             const targetList = prev[targetType] || [];
             return {
               ...prev,
-              [type]: oldList.filter((x) => String(x.id) !== String(id)),
+              [resolvedType]: oldList.filter((x) => String(x.id) !== String(id)),
               [targetType]: [updatedItem, ...targetList],
             };
           }
         }
-        const list = prev[type] || [];
+        const list = prev[resolvedType] || [];
         return {
           ...prev,
-          [type]: list.map((x) =>
+          [resolvedType]: list.map((x) =>
             String(x.id) === String(id) ? { ...x, ...updates } : x
           ),
         };
       });
 
       try {
-        const toSave = { ...updates };
-        if (toSave.type === "ypl") {
-          toSave.type = "yt" as any;
-        }
+        const sanitizeForFirestore = (obj: any): any => {
+          const cleaned: any = {};
+          for (const [k, v] of Object.entries(obj)) {
+            if (v === undefined) {
+              continue;
+            }
+            if (v && typeof v === "object" && !Array.isArray(v)) {
+              cleaned[k] = sanitizeForFirestore(v);
+            } else {
+              cleaned[k] = v;
+            }
+          }
+          return cleaned;
+        };
+        const toSave = sanitizeForFirestore(updates);
         await updateDoc(doc(db, `public_items`, String(id)), toSave);
       } catch (e) {
         console.error(e);

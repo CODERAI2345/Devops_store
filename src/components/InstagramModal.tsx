@@ -40,6 +40,15 @@ export function InstagramModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onPrev, onNext, onClose]);
 
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   // Touch swipe support for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -92,6 +101,9 @@ export function InstagramModal({
       )}
       
       <div 
+        role="dialog"
+        aria-modal="true"
+        aria-label={item.title || "Instagram Content"}
         className="relative w-full max-w-[440px] max-h-[90vh] bg-[#060816] border border-white/10 rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 z-10 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >

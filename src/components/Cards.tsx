@@ -1,4 +1,4 @@
-import { getLinkedInEmbedUrl, extractTopicFromLinkedInUrl, getLabDifficultyBadge } from "../utils";
+import { getLinkedInEmbedUrl, extractTopicFromLinkedInUrl, getLabDifficultyBadge, getPlaylistThumbnail } from "../utils";
 import React from "react";
 import { ThreadsMediaCarousel, extractThreadsMedia } from "./ThreadsMediaCarousel";
 import {
@@ -24,7 +24,13 @@ import {
   Tag,
   Maximize2,
   ArrowUpRight,
+  ListVideo,
+  Layers,
+  Sparkles,
+  CheckCircle2,
+  Lock,
 } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 interface CardProps {
   key?: React.Key;
@@ -177,83 +183,191 @@ export const YTCard = React.memo(function YTCard({ item, onStar, onDelete, onCop
 });
 
 export const YPLCard = React.memo(function YPLCard({ item, onStar, onDelete, onCopy, onClick }: CardProps) {
-  return (
-    <div
-      className="group relative overflow-hidden rounded-2xl bg-white/[0.02]  border border-white/[0.05] hover:border-violet-500/50  hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col"
-      onClick={onClick}
-    >
-      <div className="relative aspect-video w-full overflow-hidden bg-white/[0.03]">
-        {item.thumbnail ? (
-          <img onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://placehold.co/600x400/1a1a1a/666666?text=Not+Found'; }}  loading="lazy"
-            src={item.thumbnail}
-            alt={item.title}
-            className="w-full h-full object-cover group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-white/20">
-            <PlayCircle className="w-12 h-12" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-        
-        {/* Center hover indicator */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 backdrop-blur-[1px] pointer-events-none">
-          <span className="px-3 py-1 rounded-full bg-red-600/90 text-white text-xs font-semibold shadow-lg flex items-center gap-1.5 transform scale-95 group-hover:scale-100 transition-transform">
-            <Maximize2 className="w-3.5 h-3.5" /> Pop up full playlist
-          </span>
-        </div>
-        
-        {/* Top actions */}
-        <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 translate-y-[-10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-           <button
-            className={`w-8 h-8 rounded-full bg-white/[0.03]  flex items-center justify-center transition-colors border border-white/10 ${item.starred ? "text-amber-400 bg-amber-400/10 border-amber-400/20" : "text-slate-200 hover:text-white hover:bg-black/20/20"}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onStar();
-            }}
-          >
-            <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
-          </button>
-          <button
-            className="w-8 h-8 rounded-full bg-white/[0.03]  flex items-center justify-center text-slate-200 hover:text-white hover:bg-black/20/20 border border-white/10 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onCopy();
-            }}
-          >
-            <Copy className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-      
-      <div className="p-5 flex-1 flex flex-col">
-        <div className="flex items-center gap-2 text-[11px] font-medium tracking-wider text-white/40 uppercase mb-2">
-           <PlayCircle className="w-3.5 h-3.5 text-red-500" /> YouTube Playlist
-           <span>•</span>
-           {item.date || "Just now"}
-        </div>
-        {item.heading && (
-          <div className="text-xs font-bold text-emerald-400 mb-1 line-clamp-1 uppercase tracking-wider">
-            {item.heading}
-          </div>
-        )}
-        <h3 className="text-sm font-medium text-white/90 leading-relaxed line-clamp-2 group-hover:text-white transition-colors">
-          {item.title || "YouTube Playlist"}
-        </h3>
-        {item.author && (
-           <div className="text-xs text-white/50 mt-auto pt-3">
-             {item.author}
-           </div>
-        )}
+  const [thumb, setThumb] = React.useState(() => getPlaylistThumbnail(item));
+  const [imgError, setImgError] = React.useState(false);
 
-        {/* Action affordance footer */}
-        <div className="mt-3 pt-3 border-t border-white/[0.08] flex items-center justify-between text-xs text-white/50 group-hover:text-white/90 transition-colors">
-          <span className="flex items-center gap-1.5 font-medium text-red-400 group-hover:text-red-300">
-            <Maximize2 className="w-3.5 h-3.5" /> Pop up full playlist & videos
-          </span>
-          <span className="text-[11px] text-white/40 flex items-center gap-0.5 group-hover:text-white transition-colors">
-            Playlist <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-          </span>
+  // If item doesn't have a real thumbnail or has placeholder, attempt to fetch the real thumbnail from /api/youtube-meta
+  React.useEffect(() => {
+    const isPlaceholderOrMissing = !item.thumbnail || item.thumbnail.includes("placeholder") || item.thumbnail.includes("placehold.co");
+    if (isPlaceholderOrMissing && item.url) {
+      let isMounted = true;
+      fetch(`/api/youtube-meta?url=${encodeURIComponent(item.url)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (isMounted && data.success && data.data?.thumbnail && !data.data.thumbnail.includes("placeholder")) {
+            setThumb(data.data.thumbnail);
+          }
+        })
+        .catch(() => {});
+      return () => {
+        isMounted = false;
+      };
+    } else if (item.thumbnail && !item.thumbnail.includes("placeholder")) {
+      setThumb(item.thumbnail);
+    }
+  }, [item.url, item.thumbnail]);
+
+  const videoCount = item.count || (item.videoList?.length ? item.videoList.length : undefined);
+  const status = item.progressStatus || "not_started";
+
+  return (
+    <div className="relative group/stack h-full">
+      {/* Decorative Stacked Card Deck effect for Playlists */}
+      <div className="absolute -top-1.5 -right-1.5 inset-x-1.5 bottom-1.5 rounded-2xl bg-gradient-to-r from-red-950/40 via-purple-950/30 to-red-900/30 border border-red-500/20 opacity-70 group-hover/stack:-top-2 group-hover/stack:-right-2 group-hover/stack:opacity-100 transition-all duration-300 pointer-events-none -z-10" />
+      <div className="absolute -top-3 -right-3 inset-x-3 bottom-3 rounded-2xl bg-gradient-to-r from-red-950/20 via-zinc-900/40 to-violet-950/20 border border-white/5 opacity-50 group-hover/stack:-top-3.5 group-hover/stack:-right-3.5 group-hover/stack:opacity-80 transition-all duration-300 pointer-events-none -z-20" />
+
+      <div
+        className="group relative overflow-hidden rounded-2xl bg-[#0c0d12]/95 border border-white/[0.08] hover:border-red-500/50 hover:shadow-[0_12px_32px_rgba(239,68,68,0.15)] hover:-translate-y-1 transition-all duration-500 cursor-pointer flex flex-col h-full"
+        onClick={onClick}
+      >
+        {/* Media Thumbnail Container */}
+        <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-zinc-900 via-black to-zinc-950">
+          <img
+            onError={(e) => {
+              if (!imgError) {
+                setImgError(true);
+                e.currentTarget.src = getPlaylistThumbnail({ ...item, thumbnail: undefined, vid: undefined });
+              }
+            }}
+            loading="lazy"
+            src={imgError ? getPlaylistThumbnail({ ...item, thumbnail: undefined, vid: undefined }) : thumb}
+            alt={item.title || "YouTube Playlist"}
+            className="w-full h-full object-cover group-hover:scale-105 group-hover:opacity-85 transition-all duration-700 ease-out"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d12] via-black/30 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+
+          {/* Top Left: Series / Playlist Badge */}
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+            <span className="px-2.5 py-1 rounded-full bg-red-600/90 text-white text-[10px] font-bold tracking-wider uppercase shadow-md flex items-center gap-1 backdrop-blur-md">
+              <Layers className="w-3 h-3" /> Playlist
+            </span>
+            {item.difficulty && (
+              <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/90 text-[10px] font-medium border border-white/10 backdrop-blur-md">
+                {item.difficulty}
+              </span>
+            )}
+          </div>
+
+          {/* Bottom Right: Video Count Badge */}
+          <div className="absolute bottom-2.5 right-2.5 z-10 flex items-center gap-1.5">
+            <span className="px-2.5 py-1 rounded-lg bg-black/85 border border-white/15 text-white text-[11px] font-semibold shadow-lg flex items-center gap-1.5 backdrop-blur-md">
+              <ListVideo className="w-3.5 h-3.5 text-red-500" />
+              {videoCount ? `${videoCount} videos` : "Full Series"}
+            </span>
+          </div>
+
+          {/* Center hover indicator */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[1px] pointer-events-none z-20">
+            <span className="px-3.5 py-1.5 rounded-full bg-red-600 text-white text-xs font-semibold shadow-xl flex items-center gap-1.5 transform scale-95 group-hover:scale-100 transition-transform">
+              <Maximize2 className="w-3.5 h-3.5" /> Pop up full playlist
+            </span>
+          </div>
+
+          {/* Top Right Quick Actions */}
+          <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 translate-y-[-10px] group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-30">
+            <button
+              className={`w-8 h-8 rounded-full bg-black/70 backdrop-blur-md flex items-center justify-center transition-colors border ${item.starred ? "text-amber-400 bg-amber-400/20 border-amber-400/40" : "text-slate-200 hover:text-white hover:bg-white/20 border-white/20"}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onStar();
+              }}
+              title="Star playlist"
+            >
+              <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
+            </button>
+            <button
+              className="w-8 h-8 rounded-full bg-black/70 backdrop-blur-md flex items-center justify-center text-slate-200 hover:text-white hover:bg-white/20 border border-white/20 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCopy();
+              }}
+              title="Copy link"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            {onDelete && (
+              <button
+                className="w-8 h-8 rounded-full bg-black/70 backdrop-blur-md flex items-center justify-center text-slate-200 hover:text-rose-400 hover:bg-rose-500/20 border border-white/20 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                title="Delete"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-5 flex-1 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-2 text-[11px] font-medium tracking-wider text-white/50 uppercase mb-2">
+              <span className="flex items-center gap-1.5 text-red-400 font-semibold">
+                <PlayCircle className="w-3.5 h-3.5 text-red-500" />
+                {item.author || "YouTube Creator"}
+              </span>
+              <span>{item.date || "Curated"}</span>
+            </div>
+
+            {item.heading && (
+              <div className="text-xs font-bold text-red-400 mb-1 line-clamp-1 uppercase tracking-wider">
+                {item.heading}
+              </div>
+            )}
+
+            <h3 className="text-sm font-semibold text-white/95 leading-snug line-clamp-2 group-hover:text-white transition-colors mb-2">
+              {item.title || "YouTube Playlist"}
+            </h3>
+
+            {item.description && (
+              <p className="text-xs text-white/60 line-clamp-2 leading-relaxed mb-3">
+                {item.description}
+              </p>
+            )}
+
+            {/* Topics / Tags pills */}
+            {Array.isArray(item.topics) && item.topics.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {item.topics.slice(0, 3).map((topic: string) => (
+                  <span
+                    key={topic}
+                    className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/10 text-[10px] text-white/70"
+                  >
+                    #{topic}
+                  </span>
+                ))}
+                {item.topics.length > 3 && (
+                  <span className="px-1.5 py-0.5 text-[10px] text-white/40">
+                    +{item.topics.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Action affordance footer with Learning Status */}
+          <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between text-xs text-white/50 group-hover:text-white/90 transition-colors">
+            <span className="flex items-center gap-1.5 font-medium text-red-400 group-hover:text-red-300">
+              <Maximize2 className="w-3.5 h-3.5" /> Pop up full playlist & videos
+            </span>
+            <div className="flex items-center gap-1 text-[11px] text-white/40 group-hover:text-white transition-colors">
+              {status === "completed" ? (
+                <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                  <CheckCircle2 className="w-3 h-3" /> Done
+                </span>
+              ) : status === "in_progress" ? (
+                <span className="flex items-center gap-1 text-amber-400 font-medium">
+                  <Clock className="w-3 h-3" /> Learning
+                </span>
+              ) : (
+                <span className="flex items-center gap-0.5">
+                  Playlist <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1288,8 +1402,8 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
   }
 
   const tags: string[] = Array.isArray((item as any).tags) ? (item as any).tags : [];
-  const duration = (item as any).duration || "Self-paced";
-  const difficulty = ((item as any).difficulty || "Hands-on").toLowerCase();
+  const duration = String((item as any).duration || "Self-paced");
+  const difficulty = String((item as any).difficulty || "Hands-on").toLowerCase();
   
   let difficultyClass = "text-blue-700 bg-blue-100 border-blue-200";
   let difficultyLabel = "Hands-on";
@@ -1305,6 +1419,9 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
   }
 
   const [isHovered, setIsHovered] = React.useState(false);
+  const { userProgress, userBookmarks, toggleProgress, toggleBookmark } = useAuth();
+  const isCompleted = Boolean(userProgress[String(item.id)]);
+  const isBookmarked = Boolean(userBookmarks[String(item.id)]);
 
   return (
     <div 
@@ -1325,17 +1442,38 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
 
       {/* Inner Card Layer - Snow #FFFAFA with Black Text */}
       <div className="relative rounded-[12px] bg-[#FFFAFA] border border-black/5 flex-1 flex flex-col justify-between overflow-hidden z-10 shadow-none">
-        {/* Top action buttons (Only Star & Delete) */}
+        {/* Top action buttons */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20">
           <button
             onClick={(e) => {
               e.stopPropagation();
+              toggleProgress(item.id);
+            }}
+            className={`px-2.5 py-1 rounded-full flex items-center gap-1 text-[10px] font-bold transition-all backdrop-blur-sm ${
+              isCompleted
+                ? "bg-emerald-600 text-white border border-emerald-500 shadow-sm"
+                : "bg-white/90 text-slate-700 hover:text-emerald-700 hover:bg-white border border-black/10"
+            }`}
+            title={isCompleted ? "Marked as completed" : "Mark as completed"}
+          >
+            <CheckCircle2 className={`w-3 h-3 ${isCompleted ? "text-white" : "text-slate-400"}`} />
+            <span>{isCompleted ? "Done" : "Mark"}</span>
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleBookmark(item.id);
               onStar();
             }}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${item.starred ? "bg-amber-500 text-white border border-amber-600" : "bg-white/90 text-amber-500/70 hover:text-amber-500 hover:bg-white border border-black/10"}`}
-            title="Star Lab"
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${
+              isBookmarked || item.starred 
+                ? "bg-amber-500 text-white border border-amber-600" 
+                : "bg-white/90 text-amber-500/70 hover:text-amber-500 hover:bg-white border border-black/10"
+            }`}
+            title="Bookmark Lab"
           >
-            <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
+            <Star className="w-4 h-4" fill={isBookmarked || item.starred ? "currentColor" : "none"} />
           </button>
         </div>
 
@@ -1363,8 +1501,13 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
             <span className="text-[11px] text-black/60 mt-1">Interactive Hands-on Lab</span>
           </div>
 
-          {/* Floating difficulty badge */}
+          {/* Floating difficulty & protection badge */}
           <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+            {item.isProtected && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-violet-950/90 border border-violet-500/50 text-violet-200 backdrop-blur-sm flex items-center gap-1">
+                <Lock className="w-3 h-3 text-violet-400" /> Protected
+              </span>
+            )}
             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${difficultyClass}`}>
               {difficultyLabel}
             </span>
@@ -1395,9 +1538,9 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
           <div className="flex flex-col gap-3 mt-auto">
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {tags.slice(0, 4).map((t: string) => (
-                  <span key={t} className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-black/[0.05] text-black border border-black/10 rounded-md">
-                    {t}
+                {tags.slice(0, 4).filter(Boolean).map((t: any, idx: number) => (
+                  <span key={`${String(t)}-${idx}`} className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-black/[0.05] text-black border border-black/10 rounded-md">
+                    {String(t)}
                   </span>
                 ))}
               </div>
@@ -1408,10 +1551,23 @@ export const LabCard = React.memo(function LabCard({ item, onStar, onDelete, onC
                 <Clock className="w-4 h-4" />
                 {duration}
               </span>
-              <span className="flex items-center gap-1.5 text-black group-hover:text-[#006400] transition-colors font-bold">
-                <Terminal className="w-4 h-4 text-[#006400]" />
-                Start Lab <ExternalLink className="w-3.5 h-3.5" />
-              </span>
+              {item.url ? (
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1.5 text-black hover:text-[#006400] transition-colors font-bold hover:underline"
+                >
+                  <Terminal className="w-4 h-4 text-[#006400]" />
+                  Start Lab <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              ) : (
+                <span className="flex items-center gap-1.5 text-black group-hover:text-[#006400] transition-colors font-bold">
+                  <Terminal className="w-4 h-4 text-[#006400]" />
+                  Start Lab <ExternalLink className="w-3.5 h-3.5" />
+                </span>
+              )}
             </div>
 
             {/* Action affordance footer */}

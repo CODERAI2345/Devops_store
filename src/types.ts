@@ -11,6 +11,7 @@ export interface BaseItem {
   ts: number;
   starred: boolean;
   thumbnail?: string;
+  isProtected?: boolean;
 }
 
 export interface YTItem extends BaseItem {
@@ -29,9 +30,15 @@ export interface YSItem extends BaseItem {
 
 export interface YPLItem extends BaseItem {
   type: "ypl";
-  count?: number;
+  count?: number | string;
   topics?: string[];
   pid?: string;
+  vid?: string;
+  videoList?: string[];
+  progressStatus?: "not_started" | "in_progress" | "completed";
+  completedVideos?: number;
+  difficulty?: "Beginner" | "Intermediate" | "Advanced" | "Comprehensive";
+  notes?: string;
 }
 
 export interface LIItem extends BaseItem {
@@ -148,3 +155,25 @@ export interface HubDB {
   web: WebItem[];
   lab: LabItem[];
 }
+
+export interface UserProfile {
+  uid: string;
+  name: string;
+  mobile_number: string | null;
+  provider: "github" | "google" | "phone" | "password";
+  createdAt: any;
+}
+
+export interface UserProgress {
+  userId: string;
+  itemId: string | number;
+  completed: boolean;
+  completedAt: any;
+}
+
+export interface UserBookmark {
+  userId: string;
+  itemId: string | number;
+  createdAt: any;
+}
+
