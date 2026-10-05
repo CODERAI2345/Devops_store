@@ -428,10 +428,6 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
               <div className="mt-8 flex flex-wrap items-center gap-y-3 gap-x-6 text-xs sm:text-sm text-slate-300">
                 <span className="flex items-center gap-1.5 font-medium">
                   <CheckCircle2 size={16} className="text-emerald-400" />
-                  No sign-up required
-                </span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <CheckCircle2 size={16} className="text-emerald-400" />
                   Curated & Verified
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
@@ -446,44 +442,154 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
           <div className="relative">
             <div className="absolute -inset-10 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600/15 blur-3xl" />
 
-            <div className="relative">
+            <div className="relative mx-auto w-full max-w-[420px]">
               <CloudTraffic />
-              
-              {/* Floating Hero Metric Badges */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-                className="absolute -top-10 -left-10 z-20 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 backdrop-blur-xl shadow-[0_0_30px_rgba(217,70,239,0.15)] hidden md:flex"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/20 text-fuchsia-400">
-                  <BookOpen size={20} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">100+</p>
-                  <p className="text-xs text-slate-200">Curated Guides</p>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.8 }}
-                className="absolute -bottom-10 -right-5 z-20 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 backdrop-blur-xl shadow-[0_0_30px_rgba(217,70,239,0.15)] hidden md:flex"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
-                  <Server size={20} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Real-world</p>
-                  <p className="text-xs text-slate-200">Architectures</p>
-                </div>
-              </motion.div>
-
             </div>
           </div>
         </div>
-              </FadeIn>
+        </FadeIn>
+      </section>
+
+      {/* ================= CORE HIGHLIGHT PODS (SHIFTED TO DEDICATED SECTION) ================= */}
+      <section className="relative z-10 -mt-6 md:-mt-10 mb-12 mx-auto max-w-7xl px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* CARD 1: 100+ CURATED GUIDES */}
+          <motion.div
+            whileHover={{ y: -4, scale: 1.01 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => handleBrowseLibrary()}
+            style={{
+              clipPath: "polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px)",
+            }}
+            className="group relative p-[1.5px] bg-gradient-to-br from-fuchsia-500/60 via-violet-500/40 to-cyan-400/50 shadow-[0_0_35px_rgba(217,70,239,0.25)] hover:shadow-[0_0_50px_rgba(217,70,239,0.45)] transition-all cursor-pointer"
+          >
+            <div
+              style={{
+                clipPath: "polygon(17px 0, 100% 0, 100% calc(100% - 17px), calc(100% - 17px) 100%, 0 100%, 0 17px)",
+              }}
+              className="bg-[#070b14]/95 p-6 md:p-7 backdrop-blur-2xl h-full flex flex-col justify-between"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  {/* Hexagonal Tech Node Icon */}
+                  <div
+                    style={{
+                      clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+                    }}
+                    className="relative flex h-14 w-14 shrink-0 items-center justify-center bg-gradient-to-tr from-violet-600 via-fuchsia-600 to-pink-500 p-[1.5px] shadow-lg"
+                  >
+                    <div
+                      style={{
+                        clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+                      }}
+                      className="flex h-full w-full items-center justify-center bg-[#0d1326]"
+                    >
+                      <BookOpen size={24} className="text-fuchsia-400 group-hover:scale-110 transition-transform duration-300" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl md:text-2xl font-black text-white tracking-tight">100+ Curated Guides</h3>
+                      <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-fuchsia-500/20 text-fuchsia-300 rounded border border-fuchsia-500/40">
+                        FREE
+                      </span>
+                    </div>
+                    <p className="text-xs text-fuchsia-300/80 font-mono mt-0.5">COLLECTION // BATTLE-TESTED SRE DOCS</p>
+                  </div>
+                </div>
+
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-white/50 group-hover:text-fuchsia-400 group-hover:bg-fuchsia-500/10 border border-white/10 transition-colors">
+                  <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm text-slate-300 leading-relaxed">
+                Step-by-step production runbooks from Kubernetes cluster hardening to Terraform AWS infrastructure patterns — curated by senior platform engineers.
+              </p>
+
+              <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+                <span className="flex items-center gap-1.5 text-emerald-400 font-mono">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Instant Free Access
+                </span>
+                <span className="text-fuchsia-400 font-semibold group-hover:underline flex items-center gap-1">
+                  Explore Library <ArrowRight size={13} />
+                </span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* CARD 2: REAL-WORLD ARCHITECTURES */}
+          <motion.div
+            whileHover={{ y: -4, scale: 1.01 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => {
+              const el = document.getElementById('architecture');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            style={{
+              clipPath: "polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px)",
+            }}
+            className="group relative p-[1.5px] bg-gradient-to-br from-cyan-400/60 via-blue-500/40 to-indigo-600/50 shadow-[0_0_35px_rgba(59,130,246,0.25)] hover:shadow-[0_0_50px_rgba(59,130,246,0.45)] transition-all cursor-pointer"
+          >
+            <div
+              style={{
+                clipPath: "polygon(17px 0, 100% 0, 100% calc(100% - 17px), calc(100% - 17px) 100%, 0 100%, 0 17px)",
+              }}
+              className="bg-[#070b14]/95 p-6 md:p-7 backdrop-blur-2xl h-full flex flex-col justify-between"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  {/* Hexagonal Tech Node Icon */}
+                  <div
+                    style={{
+                      clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+                    }}
+                    className="relative flex h-14 w-14 shrink-0 items-center justify-center bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 p-[1.5px] shadow-lg"
+                  >
+                    <div
+                      style={{
+                        clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+                      }}
+                      className="flex h-full w-full items-center justify-center bg-[#0d1326]"
+                    >
+                      <Server size={24} className="text-cyan-400 group-hover:scale-110 transition-transform duration-300" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl md:text-2xl font-black text-white tracking-tight">Real-world Architectures</h3>
+                      <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-cyan-500/20 text-cyan-300 rounded border border-cyan-500/40">
+                        LIVE
+                      </span>
+                    </div>
+                    <p className="text-xs text-cyan-300/80 font-mono mt-0.5">TOPOLOGY // MULTI-AZ CLOUD DESIGNS</p>
+                  </div>
+                </div>
+
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-white/50 group-hover:text-cyan-400 group-hover:bg-cyan-500/10 border border-white/10 transition-colors">
+                  <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm text-slate-300 leading-relaxed">
+                Interactive production topologies for AWS multi-AZ VPCs, Application Load Balancers, container auto-scaling clusters, and automated failover systems.
+              </p>
+
+              <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+                <span className="flex items-center gap-1.5 text-cyan-400 font-mono">
+                  <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                  Interactive Simulator
+                </span>
+                <span className="text-cyan-400 font-semibold group-hover:underline flex items-center gap-1">
+                  View Architecture <ArrowRight size={13} />
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </section>
 
       {/* ================= 30-SECOND OVERVIEW: WHAT IS THIS WEBSITE? ================= */}

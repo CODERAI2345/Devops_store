@@ -50,12 +50,50 @@
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
+        "email": { "type": "string" },
         "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "status": { "type": "string", "enum": ["active", "suspended", "inactive"] },
         "mobile_number": { "type": "string" },
         "provider": { "type": "string", "enum": ["github", "google", "phone", "password"] },
-        "createdAt": { "type": "object" }
+        "createdAt": { "type": "object" },
+        "last_login": { "type": "object" }
       },
       "required": ["uid", "name", "provider"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Platform activity and interaction event.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "user_name": { "type": "string" },
+        "user_email": { "type": "string" },
+        "event_type": { "type": "string", "enum": ["login", "logout", "content_saved", "content_opened", "content_deleted", "collection_created", "search", "profile_updated"] },
+        "resource_type": { "type": "string" },
+        "resource_id": { "type": "string" },
+        "metadata": { "type": "object" },
+        "created_at": { "type": "object" }
+      },
+      "required": ["id", "user_id", "event_type"]
+    },
+    "AccessLog": {
+      "title": "AccessLog",
+      "description": "Security access and authentication log.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "user_email": { "type": "string" },
+        "user_name": { "type": "string" },
+        "login_time": { "type": "object" },
+        "auth_method": { "type": "string", "enum": ["github", "google", "phone", "password"] },
+        "device_browser": { "type": "string" },
+        "ip_address": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "failed"] }
+      },
+      "required": ["id", "auth_method", "device_browser", "status"]
     },
     "UserProgress": {
       "title": "UserProgress",
@@ -115,6 +153,14 @@
     "/analytics/{eventId}": {
       "schema": { "$ref": "#/entities/AnalyticsEvent" },
       "description": "User interaction event logs."
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Platform activity event stream."
+    },
+    "/access_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AccessLog" },
+      "description": "Security access audit trail."
     }
   }
 }

@@ -158,10 +158,39 @@ export interface HubDB {
 
 export interface UserProfile {
   uid: string;
+  email?: string | null;
   name: string;
+  role?: "admin" | "user";
+  status?: "active" | "suspended" | "inactive";
   mobile_number: string | null;
-  provider: "github" | "google" | "phone" | "password";
+  provider: "github" | "google" | "phone" | "password" | "email" | "phone_shadow";
   createdAt: any;
+  last_login?: any;
+  isDemo?: boolean;
+}
+
+export interface ActivityLog {
+  id: string;
+  user_id: string;
+  user_name?: string;
+  user_email?: string;
+  event_type: "login" | "logout" | "content_saved" | "content_opened" | "content_deleted" | "collection_created" | "search" | "profile_updated";
+  resource_type?: string;
+  resource_id?: string | number;
+  metadata?: Record<string, any>;
+  created_at: any;
+}
+
+export interface AccessLog {
+  id: string;
+  user_id?: string;
+  user_email?: string;
+  user_name?: string;
+  login_time: any;
+  auth_method: "google" | "github" | "phone" | "password";
+  device_browser: string;
+  ip_address?: string;
+  status: "success" | "failed";
 }
 
 export interface UserProgress {

@@ -23,15 +23,8 @@ import {
 } from "firebase/firestore";
 import { auth, db, googleProvider, githubProvider } from "./firebase";
 import { identifyPostHogUser, resetPostHogUser, trackPostHogEvent } from "./posthog";
-
-export interface UserProfile {
-  uid: string;
-  name: string;
-  mobile_number: string | null;
-  provider: "github" | "google" | "phone_shadow";
-  createdAt: any;
-  isDemo?: boolean;
-}
+import { UserProfile } from "./types";
+export type { UserProfile };
 
 export interface UserProgressRecord {
   userId: string;

@@ -56,6 +56,7 @@ import { useAuth } from "./context/AuthContext";
 import { AuthModal } from "./components/AuthModal";
 import { UserNav } from "./components/UserNav";
 import { UserDashboard } from "./components/UserDashboard";
+import AdminLayout from "./components/admin/AdminLayout";
 import { analyticsEvents } from "./lib/posthog";
 import { ItemType, HubItem } from "./types";
 // Removed gemini import
@@ -93,6 +94,8 @@ interface FeedCardItemProps {
   onEnrich?: (tab: ItemType, id: number | string) => void;
   showToast: (msg: string, err?: boolean) => void;
   isGlobalSearch?: boolean;
+  isGated?: boolean;
+  onUnlockPrompt?: () => void;
 }
 
 const GLOBAL_SECTION_META: Record<string, { name: string; icon: string; color: string }> = {
@@ -122,6 +125,8 @@ const FeedCardItem = React.memo(function FeedCardItem({
   onEnrich,
   showToast,
   isGlobalSearch,
+  isGated,
+  onUnlockPrompt,
 }: FeedCardItemProps) {
   const actualTab = (item.type || tab) as ItemType;
   const { isCompleted, isBookmarked, toggleProgress, toggleBookmark } = useAuth();
@@ -131,7 +136,13 @@ const FeedCardItem = React.memo(function FeedCardItem({
   const handleStar = useCallback(() => onStar(actualTab, item.id), [onStar, actualTab, item.id]);
   const handleDelete = useCallback(() => onDelete(actualTab, item.id), [onDelete, actualTab, item.id]);
   const handleCopy = useCallback(() => onCopy(actualTab, item), [onCopy, actualTab, item]);
-  const handleClick = useCallback(() => onClick(item), [onClick, item]);
+  const handleClick = useCallback(() => {
+    if (isGated) {
+      if (onUnlockPrompt) onUnlockPrompt();
+      return;
+    }
+    onClick(item);
+  }, [isGated, onUnlockPrompt, onClick, item]);
   const handleEnrich = onEnrich ? useCallback(() => onEnrich(actualTab, item.id), [onEnrich, actualTab, item.id]) : undefined;
 
   const renderCardBody = () => {
@@ -227,8 +238,32 @@ const FeedCardItem = React.memo(function FeedCardItem({
           )}
         </div>
       </div>
-      <div className="flex-1">
-        {renderCardBody()}
+      <div className="flex-1 relative">
+        <div className={isGated ? "pointer-events-none select-none filter blur-[1.5px] opacity-75" : ""}>
+          {renderCardBody()}
+        </div>
+        {isGated && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onUnlockPrompt) onUnlockPrompt();
+            }}
+            className="absolute inset-0 z-20 backdrop-blur-[2px] bg-[#070913]/65 hover:bg-[#070913]/80 transition-all rounded-2xl border border-white/10 flex flex-col items-center justify-center p-4 text-center cursor-pointer group/overlay shadow-inner"
+          >
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center text-white mb-2 shadow-lg shadow-fuchsia-900/40 group-hover/overlay:scale-110 transition-transform">
+              <Lock className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-bold text-white tracking-wide mb-1 flex items-center gap-1">
+              Free Member Resource
+            </span>
+            <span className="text-[11px] text-slate-300 max-w-[210px] leading-tight mb-3 line-clamp-2">
+              Sign up in 5 seconds to unlock full video, hands-on lab guide & links
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 group-hover/overlay:bg-white/20 text-white border border-white/20 transition-all">
+              <Sparkles className="w-3 h-3 text-fuchsia-400" /> Unlock Free
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -238,21 +273,18 @@ function MainApp() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, openAuthModal, loading: authLoading } = useAuth();
-  const view = location.pathname.startsWith("/admin/dashboard") 
+  const view = location.pathname.startsWith("/admin") 
     ? "admin" 
     : location.pathname === "/dashboard" 
     ? "dashboard" 
     : location.pathname === "/feed" 
     ? "feed" 
     : "landing";
-  const setView = (v: string) => navigate(v === "landing" ? "/" : v === "admin" ? "/admin/dashboard" : v === "dashboard" ? "/dashboard" : `/${v}`);
+  const setView = (v: string) => navigate(v === "landing" ? "/" : v === "admin" ? "/admin" : v === "dashboard" ? "/dashboard" : `/${v}`);
 
-  // Auto-prompt login if /feed is visited while not logged in
-  useEffect(() => {
-    if (view === "feed" && !user && !authLoading) {
-      openAuthModal('login', 'Please sign in with GitHub, Google, or Mobile to browse the free DevOps library.');
-    }
-  }, [view, user, authLoading, openAuthModal]);
+  // Guest Free Preview Configuration
+  const [showGuestBanner, setShowGuestBanner] = useState(true);
+  const GUEST_PREVIEW_LIMIT = 6;
 
   const {
     db,
@@ -1309,9 +1341,14 @@ function MainApp() {
 
   const handleStarItem = useCallback(
     (tab: ItemType, id: number | string) => {
+      if (!user) {
+        openAuthModal('signup', 'Sign up in 5 seconds to bookmark and save items to your favorites list.');
+        return;
+      }
       toggleStar(tab, id);
+      showToast("Toggled favorite!");
     },
-    [toggleStar]
+    [user, openAuthModal, toggleStar, showToast]
   );
 
   const handleDeleteItem = useCallback(
@@ -1344,9 +1381,30 @@ function MainApp() {
       setSelectedItem(null);
       return;
     }
-    // Premium Content Gating: Prompt login modal if protected item is clicked without user session
+
+    // Guest preview gating: allow up to 2 free detail modal views before prompting registration
+    if (!user) {
+      let currentViews = 0;
+      try {
+        currentViews = parseInt(localStorage.getItem('devops_preview_views_count') || '0', 10);
+      } catch {
+        currentViews = 0;
+      }
+
+      if (currentViews >= 2) {
+        openAuthModal('signup', `You've explored ${currentViews} free preview guides! Create your free account in 5 seconds to unlock unlimited access to all 500+ DevOps resources.`);
+        return;
+      }
+      try {
+        localStorage.setItem('devops_preview_views_count', (currentViews + 1).toString());
+      } catch {
+        // ignore
+      }
+    }
+
+    // Premium Content Gating
     if (item.isProtected && !user) {
-      openAuthModal('login', `This is a protected premium topic. Sign in with GitHub, Google, or Mobile to unlock full access.`);
+      openAuthModal('signup', `This is a protected premium topic. Sign up with GitHub, Google, or Mobile for free to unlock.`);
       return;
     }
     const resolvedType = item.type || currentTab || "lab";
@@ -1503,20 +1561,25 @@ function MainApp() {
 
           {/* Results Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
-            {displayItems.map((item: any) => (
-              <FeedCardItem
-                key={`${item.type || tabToRender}-${item.id}`}
-                item={item}
-                tab={item.type || tabToRender}
-                onStar={handleStarItem}
-                onDelete={handleDeleteItem}
-                onCopy={handleCopyItem}
-                onClick={handleSelectItem}
-                onEnrich={item.type === "lp" || item.type === "li" ? handleEnrichItem : undefined}
-                showToast={showToast}
-                isGlobalSearch={true}
-              />
-            ))}
+            {displayItems.map((item: any, idx: number) => {
+              const isGated = !user && idx >= GUEST_PREVIEW_LIMIT;
+              return (
+                <FeedCardItem
+                  key={`${item.type || tabToRender}-${item.id}`}
+                  item={item}
+                  tab={item.type || tabToRender}
+                  onStar={handleStarItem}
+                  onDelete={handleDeleteItem}
+                  onCopy={handleCopyItem}
+                  onClick={handleSelectItem}
+                  onEnrich={item.type === "lp" || item.type === "li" ? handleEnrichItem : undefined}
+                  showToast={showToast}
+                  isGlobalSearch={true}
+                  isGated={isGated}
+                  onUnlockPrompt={() => openAuthModal('signup', `Sign up for free to unlock this ${GLOBAL_SECTION_META[item.type || tabToRender]?.name || 'resource'} and all 500+ DevOps materials.`)}
+                />
+              );
+            })}
           </div>
         </div>
       );
@@ -1633,20 +1696,58 @@ function MainApp() {
     }
 
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
-        {items.map((item: any) => (
-          <FeedCardItem
-            key={item.id}
-            item={item}
-            tab={tabToRender}
-            onStar={handleStarItem}
-            onDelete={handleDeleteItem}
-            onCopy={handleCopyItem}
-            onClick={handleSelectItem}
-            onEnrich={tabToRender === "lp" || tabToRender === "li" ? handleEnrichItem : undefined}
-            showToast={showToast}
-          />
-        ))}
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
+          {items.map((item: any, idx: number) => {
+            const isGated = !user && idx >= GUEST_PREVIEW_LIMIT;
+            return (
+              <FeedCardItem
+                key={item.id}
+                item={item}
+                tab={tabToRender}
+                onStar={handleStarItem}
+                onDelete={handleDeleteItem}
+                onCopy={handleCopyItem}
+                onClick={handleSelectItem}
+                onEnrich={tabToRender === "lp" || tabToRender === "li" ? handleEnrichItem : undefined}
+                showToast={showToast}
+                isGated={isGated}
+                onUnlockPrompt={() => openAuthModal('signup', `Sign up for free to unlock this ${GLOBAL_SECTION_META[tabToRender]?.name || 'resource'} and the full DevOps library.`)}
+              />
+            );
+          })}
+        </div>
+
+        {!user && items.length > GUEST_PREVIEW_LIMIT && (
+          <div className="mt-8 p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-[#120d24] via-[#090b14] to-[#120d24] border border-fuchsia-500/30 text-center relative overflow-hidden shadow-2xl">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(217,70,239,0.15),transparent_70%)] pointer-events-none" />
+            <div className="relative z-10 max-w-xl mx-auto space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-400 flex items-center justify-center mx-auto shadow-inner">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                Unlock {items.length - GUEST_PREVIEW_LIMIT}+ more {GLOBAL_SECTION_META[tabToRender]?.name || 'DevOps'} resources
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Join engineers exploring production architectures, Kubernetes hands-on labs, and real-world system designs. 100% Free forever with Google, GitHub, or Phone.
+              </p>
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  onClick={() => openAuthModal('signup', `Create your free account to unlock all ${items.length} ${GLOBAL_SECTION_META[tabToRender]?.name || 'resources'} instantly.`)}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold text-sm shadow-xl shadow-fuchsia-900/40 transition-all cursor-pointer"
+                >
+                  ⚡ Unlock All Resources Free
+                </button>
+                <button
+                  onClick={() => openAuthModal('login')}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/10 transition-colors cursor-pointer"
+                >
+                  Already have an account? Sign In
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -1753,245 +1854,42 @@ function MainApp() {
     );
   };
 
-  if (view === "admin") {
-    if (!isAdminAuth) {
-      return (
-        <div className="fixed inset-0 bg-black text-[#EDEDED] flex items-center justify-center p-4 font-sans">
-          <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 bg-[#000000]">
-             <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_0%,#000_10%,transparent_100%)]" />
-          </div>
-          
-          <div className="bg-[#0A0A0A] border border-[#27272A] p-8 rounded-xl w-full max-w-sm shadow-2xl relative z-10">
-            <div className="flex items-center justify-between mb-6">
-                 <h2 className="text-2xl font-display font-bold text-white">Admin Login</h2>
-                 <button onClick={() => setView("landing")} className="text-white/40 hover:text-white transition-colors bg-white/[0.03] rounded-full p-2">
-                     <X className="w-4 h-4" />
-                 </button>
-            </div>
-              
-            <p className="text-white/50 text-sm mb-6">Enter your credentials to access the management dashboard.</p>
-
-            {loginError && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400 flex items-start gap-2">
-                <X className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{loginError}</span>
-              </div>
-            )}
-              
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-medium text-white/60 mb-1">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="admin@gmail.com"
-                  value={loginEmail}
-                  onChange={(e) => {
-                    setLoginEmail(e.target.value);
-                    if (loginError) setLoginError("");
-                  }}
-                  className="w-full bg-[#000000] border border-[#27272A] rounded-md px-4 py-2.5 text-sm text-[#EDEDED] placeholder-[#71717A] focus:outline-none focus:border-[#EDEDED] transition-colors"
-                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-white/60 mb-1">Secret Key</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter Secret Key"
-                    value={loginPass}
-                    onChange={(e) => {
-                      setLoginPass(e.target.value);
-                      if (loginError) setLoginError("");
-                    }}
-                    className="w-full bg-[#000000] border border-[#27272A] rounded-md pl-4 pr-10 py-2.5 text-sm text-[#EDEDED] placeholder-[#71717A] focus:outline-none focus:border-[#EDEDED] transition-colors"
-                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                    title={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={handleLogin}
-                className="w-full mt-2 py-3 bg-[#EDEDED] text-black hover:bg-white font-medium text-sm rounded-md transition-colors shadow-lg active:scale-[0.99]"
-              >
-                Authenticate
-              </button>
-            </div>
-          </div>
-
-          {/* Toast Notification for Login View */}
-          <div
-            className={`fixed bottom-6 right-6 bg-[#09090B] border ${toastMsg?.err ? "border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.1)]" : "border-fuchsia-500/30 shadow-[0_0_20px_rgba(217,70,239,0.15)]"} rounded-xl px-5 py-3 text-sm font-semibold flex items-center gap-3 transition-all duration-300 z-[999] ${toastMsg ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-95 pointer-events-none"}`}
+  const renderLinkManagerContent = () => (
+    <div className="space-y-6">
+      {/* Category Pills */}
+      <div className="flex overflow-x-auto gap-2 pb-2 no-scrollbar border-b border-white/10">
+        {(["yt", "ypl", "ys", "lp", "tw", "ig", "igp", "th", "blog", "email", "git", "web", "lab"] as ItemType[]).map((t) => (
+          <button
+            key={t}
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 border cursor-pointer ${
+              adminTab === t
+                ? "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40 font-semibold shadow-sm"
+                : "bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.06] border-white/5"
+            }`}
+            onClick={() => {
+              setAdminTab(t as ItemType);
+              setAdminSearchQuery("");
+            }}
           >
-            <div
-              className={`w-5 h-5 rounded-full flex items-center justify-center ${toastMsg?.err ? "bg-red-500" : "bg-gradient-to-r from-violet-600 to-fuchsia-600"}`}
-            >
-              {toastMsg?.err ? (
-                <X className="w-3 h-3 text-white" />
-              ) : (
-                <Check className="w-3 h-3 text-white" />
-              )}
-            </div>
-            <span className={toastMsg?.err ? "text-red-400" : "text-fuchsia-100"}>{toastMsg?.msg}</span>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="min-h-screen bg-[#000000] text-[#EDEDED] font-sans relative z-0 flex">
-        {/* Background Elements */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 bg-[#000000]">
-          <div className="absolute top-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#27272A] to-transparent"></div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="w-64 border-r border-[#27272A] bg-[#09090B] hidden md:flex flex-col relative z-10 sticky top-0 h-screen">
-            <div className="p-6 border-b border-[#27272A] flex items-center justify-between">
-                <div className="font-display font-bold text-xl flex items-center gap-2">
-                    <div className="w-6 h-6 rounded bg-[#27272A] border border-[#3F3F46] flex items-center justify-center">
-                       <LinkIcon className="w-3 h-3 text-white" />
-                    </div>
-                    Admin
-                </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 space-y-1">
-                <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 px-2">Content Types</div>
-                {(["yt", "ypl", "ys", "lp", "tw", "ig", "igp", "th", "blog", "email", "git", "web", "lab"] as ItemType[]).map((t) => (
-                    <button
-                        key={t}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${adminTab === t ? "bg-[#27272A] text-white" : "text-[#A1A1AA] hover:text-white hover:bg-[#18181B]"}`}
-                        onClick={() => {
-                          setAdminTab(t as ItemType);
-                          setAdminSearchQuery("");
-                        }}
-                    >
-                        {t === "yt" && <PlayCircle className="w-4 h-4" />}
-                        {t === "ypl" && <PlayCircle className="w-4 h-4 text-red-400" />}
-                        {t === "ys" && <PlayCircle className="w-4 h-4" />}
-                        {t === "lp" && <Linkedin className="w-4 h-4" />}
-                        {t === "tw" && <Twitter className="w-4 h-4 text-sky-400" />}
-                        {t === "ig" && <Instagram className="w-4 h-4 text-pink-400" />}
-                        {t === "igp" && <Instagram className="w-4 h-4 text-pink-500" />}
-                        {t === "th" && <span className="w-4 h-4 text-white flex items-center justify-center font-bold text-lg leading-none">@</span>}
-                        {t === "blog" && <FileText className="w-4 h-4" />}
-                        {t === "email" && <Mail className="w-4 h-4" />}
-                        
-                        {t === "git" && <Github className="w-4 h-4 text-slate-400" />}
-                        {t === "web" && <Globe2 className="w-4 h-4 text-blue-400" />}
-                        {t === "lab" && <svg className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.52 16h12.96"/></svg>}
-                        
-                        {t === "yt" ? "YouTube" : t === "ypl" ? "Playlists" : t === "ys" ? "Shorts" : t === "lp" ? "LinkedIn Posts" : t === "tw" ? "Twitter/X" : t === "ig" ? "Instagram Reels" : t === "igp" ? "Instagram Posts" : t === "th" ? "Threads" : t === "blog" ? "Blogs" : t === "email" ? "Emails" : t === "git" ? "GitHub" : t === "web" ? "Websites" : t === "lab" ? "Labs" : ""}
-                    </button>
-                ))}
-            </div>
-            
-            <div className="p-4 border-t border-white/10 space-y-2">
-                 <button
-                    onClick={() => navigate("/admin/export")}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-white/60 hover:text-fuchsia-400 hover:bg-fuchsia-500/10 rounded-lg text-sm font-medium transition-colors"
-                >
-                    <Download className="w-4 h-4" /> Export Data
-                </button>
-                {deferredPrompt && (
-                  <button
-                    onClick={handleInstall}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-white/60 hover:text-fuchsia-400 hover:bg-fuchsia-500/10 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    <Download className="w-4 h-4" /> Install App
-                  </button>
-                )}
-                <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-white/60 hover:text-red-400 hover:bg-red-500/10 rounded-lg text-sm font-medium transition-colors"
-                >
-                    <LogOut className="w-4 h-4" /> Logout
-                </button>
-            </div>
-        </div>
-
-        <div className="flex-1 relative z-10 max-h-screen overflow-y-auto">
-          {/* Mobile Admin Header */}
-          <div className="md:hidden p-4 border-b border-[#27272A] flex items-center justify-between bg-white/[0.03] backdrop-blur-xl sticky top-0 z-20">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setView("feed")}
-                className="text-white/60 hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <span className="font-display font-semibold">Admin</span>
-            </div>
-             <div className="flex items-center gap-3">
-               {deferredPrompt && (
-                 <button
-                    onClick={handleInstall}
-                    className="text-white/60 hover:text-fuchsia-400 transition-colors"
-                 >
-                    <Download className="w-5 h-5" />
-                 </button>
-               )}
-               <button
-                  onClick={handleLogout}
-                  className="text-white/60 hover:text-red-400 transition-colors"
-               >
-                  <LogOut className="w-5 h-5" />
-               </button>
-             </div>
-          </div>
-          
-          <div className="p-6 md:p-10 max-w-4xl mx-auto">
-             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                 <div>
-                     <h1 className="text-3xl font-display font-bold">Manage Content</h1>
-                     <p className="text-white/50 mt-1">Add, update, or remove items from your hub.</p>
-                 </div>
-                 
-                 <div className="flex items-center gap-3">
-                   <button
-                       onClick={() => {
-                           setAdminTab(currentTab);
-                           setShowAdminModal(true);
-                       }}
-                       className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-rose-400 hover:from-orange-400 hover:to-red-400 text-black font-semibold rounded-full text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-                   >
-                       <Plus className="w-4 h-4 text-black stroke-[3]" />
-                       <span>Save Link / Quick Add</span>
-                   </button>
-                   <button
-                      onClick={() => setView("feed")}
-                      className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 rounded-full text-sm font-medium transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4" /> Back to Hub
-                    </button>
-                 </div>
-             </div>
-             
-             {/* Mobile Tabs */}
-             <div className="md:hidden flex overflow-x-auto gap-2 pb-4 mb-6 no-scrollbar border-b border-[#27272A]">
-                {(["yt", "ypl", "ys", "lp", "tw", "ig", "igp", "th", "blog", "email", "git", "web", "lab"] as ItemType[]).map((t) => (
-                  <button
-                    key={t}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap border ${adminTab === t ? "bg-fuchsia-500/10 text-fuchsia-400 border-orange-500/20" : "bg-white/[0.03] text-white/60 border-white/10"}`}
-                    onClick={() => {
-                      setAdminTab(t as ItemType);
-                      setAdminSearchQuery("");
-                    }}
-                  >
-                    {t === "yt" ? "YouTube" : t === "ypl" ? "Playlists" : t === "ys" ? "Shorts" : t === "lp" ? "LinkedIn Post" : t === "tw" ? "Twitter/X" : t === "ig" ? "Instagram Reels" : t === "igp" ? "Instagram Posts" : t === "th" ? "Threads" : t === "blog" ? "Blogs" : t === "email" ? "Emails" : t === "git" ? "GitHub" : t === "web" ? "Websites" : t === "lab" ? "Labs" : ""}
-                  </button>
-                ))}
-             </div>
+            {t === "yt" && <PlayCircle className="w-3.5 h-3.5 text-red-400" />}
+            {t === "ypl" && <PlayCircle className="w-3.5 h-3.5 text-red-500" />}
+            {t === "ys" && <PlayCircle className="w-3.5 h-3.5 text-rose-400" />}
+            {t === "lp" && <Linkedin className="w-3.5 h-3.5 text-blue-400" />}
+            {t === "tw" && <Twitter className="w-3.5 h-3.5 text-sky-400" />}
+            {t === "ig" && <Instagram className="w-3.5 h-3.5 text-pink-400" />}
+            {t === "igp" && <Instagram className="w-3.5 h-3.5 text-pink-500" />}
+            {t === "th" && <span className="w-3.5 h-3.5 text-white flex items-center justify-center font-bold text-xs leading-none">@</span>}
+            {t === "blog" && <FileText className="w-3.5 h-3.5 text-cyan-400" />}
+            {t === "email" && <Mail className="w-3.5 h-3.5 text-amber-400" />}
+            {t === "git" && <Github className="w-3.5 h-3.5 text-slate-200" />}
+            {t === "web" && <Globe2 className="w-3.5 h-3.5 text-blue-400" />}
+            {t === "lab" && <svg className="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.52 16h12.96"/></svg>}
+            <span>
+              {t === "yt" ? "YouTube" : t === "ypl" ? "Playlists" : t === "ys" ? "Shorts" : t === "lp" ? "LinkedIn" : t === "tw" ? "Twitter/X" : t === "ig" ? "Reels" : t === "igp" ? "IG Posts" : t === "th" ? "Threads" : t === "blog" ? "Blogs" : t === "email" ? "Job Contacts" : t === "git" ? "GitHub" : t === "web" ? "Websites" : t === "lab" ? "Labs" : ""}
+            </span>
+          </button>
+        ))}
+      </div>
 
             <div className="bg-[#09090B] border border-[#27272A] rounded-xl p-6 md:p-8 mb-8 shadow-sm relative overflow-hidden">
               <h2 className="text-lg font-semibold mb-6 flex items-center gap-2 text-[#EDEDED]">
@@ -2527,373 +2425,24 @@ function MainApp() {
               })()}
             </div>
           </div>
-        </div>
+  );
 
-        {selectedItem && (
-          selectedItem.type === "th" ? (() => {
-            const thItems = db.th || [];
-            const currentIdx = thItems.findIndex((x) => x.id === selectedItem.id);
-            const hasPrev = currentIdx > 0;
-            const hasNext = currentIdx >= 0 && currentIdx < thItems.length - 1;
-
-            return (
-              <ThreadsModal
-                key={selectedItem.id}
-                item={selectedItem}
-                currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
-                totalCount={thItems.length > 0 ? thItems.length : undefined}
-                onPrev={hasPrev ? () => setSelectedItem(thItems[currentIdx - 1]) : undefined}
-                onNext={hasNext ? () => setSelectedItem(thItems[currentIdx + 1]) : undefined}
-                onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
-                onStar={() => {
-                  if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
-                  setSelectedItem((prev) =>
-                    prev ? { ...prev, starred: !prev.starred } : null,
-                  );
-                }}
-                onCopy={() => {
-                  if (selectedItem) {
-                    navigator.clipboard.writeText(selectedItem.url);
-                    showToast("Threads link copied!");
-                  }
-                }}
-              />
-            );
-          })() : (selectedItem.type === "ig" || selectedItem.type === "igp") ? (
-            <InstagramModal
-              key={selectedItem.id}
-              item={selectedItem}
-              onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
-              onStar={() => {
-                if (selectedItem) toggleStar(selectedItem.type, selectedItem.id);
-                setSelectedItem((prev) =>
-                  prev ? { ...prev, starred: !prev.starred } : null,
-                );
-              }}
-              onCopy={() => {
-                if (selectedItem) {
-                  navigator.clipboard.writeText(selectedItem.url);
-                  showToast("Instagram link copied!");
-                }
-              }}
-            />
-          ) : (
-            <ErrorBoundary fallbackTitle="Item Details Modal Error" onReset={() => { setSelectedItem(null); setModalDefaultEditing(false); }}>
-              <Modal
-                key={selectedItem.id}
-                item={selectedItem}
-                isAdmin={true}
-                defaultEditing={modalDefaultEditing}
-                onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
-                onStar={() => {
-                  if (selectedItem) toggleStar((selectedItem.type || adminTab || "lab") as ItemType, selectedItem.id);
-                  setSelectedItem((prev) =>
-                    prev ? { ...prev, starred: !prev.starred } : null,
-                  );
-                }}
-                onCopy={() => {
-                  if (selectedItem) {
-                    if (selectedItem.type === "li" && selectedItem.title && selectedItem.title !== "LinkedIn Member" && !selectedItem.title.startsWith("http")) {
-                      let copyText = selectedItem.title;
-                      if ((selectedItem as any).company) {
-                        copyText += ` - ${(selectedItem as any).company}`;
-                      }
-                      navigator.clipboard.writeText(copyText);
-                      showToast("Profile details copied!");
-                      return;
-                    }
-                    navigator.clipboard.writeText(selectedItem.url);
-                    showToast("Link copied!");
-                  }
-                }}
-                onUpdate={async (id, updates) => {
-                  if (selectedItem) {
-                    const targetType = (updates.type as ItemType) || selectedItem.type || adminTab || "lab";
-                    await updateItem(targetType, id, updates);
-                    setSelectedItem({ ...selectedItem, ...updates, type: targetType } as any);
-                    showToast("Item updated!");
-                  }
-                }}
-              />
-            </ErrorBoundary>
-          )
-        )}
-
-        {/* Toast */}
-
-      {/* Admin Quick Add Modal Dialog */}
-      {showAdminModal && (
-        <div 
-          className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in"
-          onClick={() => setShowAdminModal(false)}
-        >
-          <div 
-            role="dialog"
-            aria-modal="true"
-            aria-label="Save Link / Quick Add"
-            onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-3xl bg-[#0d0d0d] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.9)] text-white max-h-[90vh] flex flex-col my-auto"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between pb-5 border-b border-[#27272A] shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                  <Sparkles className="w-5 h-5 text-black" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
-                    Save Link / Quick Add
-                  </h2>
-                  <p className="text-xs text-white/50">Save links, videos, repos, or contacts directly to your Central Hub</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAdminModal(false)}
-                className="text-white/40 hover:text-white transition-colors bg-white/[0.03] hover:bg-white/[0.05] rounded-full p-2.5"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto py-6 space-y-6 pr-1 custom-scrollbar">
-              {/* Category Pills */}
-              <div>
-                <label className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2.5 block">Select Content Type</label>
-                <div className="flex overflow-x-auto gap-2 pb-2 no-scrollbar">
-                  {(["yt", "ypl", "ys", "lp", "tw", "ig", "igp", "th", "blog", "email", "git", "web", "lab"] as ItemType[]).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setAdminTab(t as ItemType)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 border ${adminTab === t ? "bg-gradient-to-r from-violet-600 to-fuchsia-600/15 text-fuchsia-400 border-orange-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]" : "bg-white/[0.03] text-white/60 hover:text-white hover:bg-white/[0.05] border-white/10"}`}
-                    >
-                      {t === "yt" && <PlayCircle className="w-3.5 h-3.5" />}
-                      {t === "ypl" && <PlayCircle className="w-3.5 h-3.5 text-red-400" />}
-                      {t === "ys" && <PlayCircle className="w-3.5 h-3.5" />}
-                      {t === "lp" && <Linkedin className="w-3.5 h-3.5" />}
-                      {t === "tw" && <Twitter className="w-3.5 h-3.5 text-sky-400" />}
-                      {t === "ig" && <Instagram className="w-3.5 h-3.5 text-pink-400" />}
-                      {t === "igp" && <Instagram className="w-3.5 h-3.5 text-pink-500" />}
-                      {t === "igp" && <Instagram className="w-3.5 h-3.5 text-pink-500" />}
-                      {t === "th" && <span className="w-3.5 h-3.5 text-white flex items-center justify-center font-bold text-sm leading-none">@</span>}
-                      {t === "blog" && <FileText className="w-3.5 h-3.5" />}
-                      {t === "email" && <Mail className="w-3.5 h-3.5" />}
-                      
-                      {t === "git" && <Github className="w-3.5 h-3.5 text-slate-400" />}
-                      {t === "yt" ? "YouTube" : t === "ypl" ? "Playlists" : t === "ys" ? "Shorts" : t === "lp" ? "LinkedIn Post" : t === "tw" ? "Twitter/X" : t === "ig" ? "Instagram Reels" : t === "igp" ? "Instagram Posts" : t === "th" ? "Threads" : t === "blog" ? "Blogs" : t === "email" ? "Job Contacts" : t === "git" ? "GitHub" : t === "web" ? "Websites" : t === "lab" ? "Labs" : ""}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quick Paste Link Box */}
-              <div className="bg-black/20/[0.02] border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-white flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4 text-fuchsia-400" />
-                    Paste URL or Link
-                  </span>
-                  <span className="text-xs text-white/40">Auto-detects metadata</span>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50 transition-all"
-                    placeholder={`Paste ${adminTab === "yt" ? "YouTube" : adminTab === "ypl" ? "Playlist" : adminTab === "ys" ? "Short" : adminTab === "blog" ? "Blog" : adminTab === "lp" ? "LinkedIn Post" : adminTab === "li" ? "LinkedIn Profile" : adminTab === "tw" ? "Twitter/X" : adminTab === "git" ? "GitHub Repo" : adminTab === "ig" ? "Instagram Reels" : adminTab === "igp" ? "Instagram Post" : adminTab === "th" ? "Threads" : adminTab === "web" ? "Website" : adminTab === "lab" ? "Lab/Course" : "Link"} URL...`}
-                    value={addInput}
-                    onChange={(e) => setAddInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAddLink();
-                    }}
-                  />
-                  <button
-                    className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-black font-semibold rounded-xl text-sm transition-all duration-300 disabled:opacity-50 flex items-center justify-center min-w-[110px] shadow-[0_0_20px_rgba(16,185,129,0.25)]"
-                    onClick={handleAddLink}
-                    disabled={loading || !addInput.trim()}
-                  >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Link"}
-                  </button>
-                </div>
-              </div>
-
-              {/* Manual Blog Entry if Blog Selected */}
-              {adminTab === "blog" && (
-                <div className="bg-black/20/[0.02] border border-white/10 rounded-2xl p-5 space-y-3">
-                  <h3 className="text-sm font-semibold text-white">Manual Blog Details</h3>
-                  <input
-                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50"
-                    placeholder="Blog Title *"
-                    value={manualBlog.title}
-                    onChange={(e) => setManualBlog({ ...manualBlog, title: e.target.value })}
-                  />
-                  <div className="flex gap-2">
-                    <input
-                      className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50"
-                      placeholder="Blog URL *"
-                      value={manualBlog.url}
-                      onChange={(e) => setManualBlog({ ...manualBlog, url: e.target.value })}
-                    />
-                    <button
-                      onClick={handleFetchBlogDetails}
-                      disabled={!manualBlog.url || loading}
-                      className="px-3 py-2.5 bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 rounded-xl text-xs font-medium text-slate-200 hover:text-white transition-colors"
-                    >
-                      Fetch Auto
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <input
-                      className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50"
-                      placeholder="Platform (Medium, Dev.to...)"
-                      value={manualBlog.platform}
-                      onChange={(e) => setManualBlog({ ...manualBlog, platform: e.target.value })}
-                    />
-                    <input
-                      className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50"
-                      placeholder="Thumbnail URL (Optional)"
-                      value={manualBlog.thumbnail}
-                      onChange={(e) => setManualBlog({ ...manualBlog, thumbnail: e.target.value })}
-                    />
-                  </div>
-                  <textarea
-                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50 h-20 resize-none"
-                    placeholder="Short Description..."
-                    value={manualBlog.description}
-                    onChange={(e) => setManualBlog({ ...manualBlog, description: e.target.value })}
-                  />
-                  <button
-                    onClick={handleManualBlogSubmit}
-                    disabled={!manualBlog.title || !manualBlog.url || loading}
-                    className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-black font-semibold rounded-xl text-sm transition-all duration-300 disabled:opacity-50"
-                  >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Save Blog"}
-                  </button>
-                </div>
-              )}
-
-              {/* Contact Entry if Email or HR Email Selected */}
-              {(adminTab === "email" ) && (
-                <div className="bg-black/20/[0.02] border border-white/10 rounded-2xl p-5 space-y-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-white">Add "Job Contact"</h3>
-                    <button
-                      onClick={() => setIsBulkEmail(!isBulkEmail)}
-                      className="text-xs bg-white/[0.05] hover:bg-black/20/20 px-3 py-1 rounded-full transition-colors"
-                    >
-                      {isBulkEmail ? "Single Mode" : "Bulk Mode"}
-                    </button>
-                  </div>
-
-                  {isBulkEmail ? (
-                    <div className="space-y-3">
-                      <select
-                        className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50"
-                        value={bulkRole}
-                        onChange={(e) => setBulkRole(e.target.value)}
-                      >
-                        <option value="">Select Category / Role (Optional)</option>
-                        {JOB_ROLES.map((r) => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-                      <textarea
-                        className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50 h-28 resize-none font-mono text-xs"
-                        placeholder={`Paste emails...\ncompany@email.com\nCompany Name, company@email.com`}
-                        value={bulkEmailText}
-                        onChange={(e) => setBulkEmailText(e.target.value)}
-                      />
-                      <button
-                        onClick={handleBulkEmailSubmit}
-                        disabled={!bulkEmailText.trim() || loading}
-                        className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-black font-semibold rounded-xl text-sm transition-all"
-                      >
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Save Bulk Contacts"}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <input
-                          className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50"
-                          placeholder="Company *"
-                          value={manualEmail.company}
-                          onChange={(e) => setManualEmail({ ...manualEmail, company: e.target.value })}
-                        />
-                        <input
-                          className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50"
-                          placeholder="Email Address *"
-                          value={manualEmail.email}
-                          onChange={(e) => setManualEmail({ ...manualEmail, email: e.target.value })}
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <select
-                          className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50"
-                          value={manualEmail.role}
-                          onChange={(e) => setManualEmail({ ...manualEmail, role: e.target.value })}
-                        >
-                          <option value="">Role / Category</option>
-                          {JOB_ROLES.map((r) => (
-                            <option key={r} value={r}>{r}</option>
-                          ))}
-                        </select>
-                        <input
-                          className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50"
-                          placeholder="Notes (Optional)"
-                          value={manualEmail.notes}
-                          onChange={(e) => setManualEmail({ ...manualEmail, notes: e.target.value })}
-                        />
-                      </div>
-                      <button
-                        onClick={handleManualEmailSubmit}
-                        disabled={!manualEmail.company || !manualEmail.email || loading}
-                        className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-black font-semibold rounded-xl text-sm transition-all"
-                      >
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Save Contact"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs text-white/50 shrink-0">
-              <button
-                onClick={() => {
-                  setShowAdminModal(false);
-                  setView("admin");
-                }}
-                className="text-fuchsia-400 hover:underline font-medium flex items-center gap-1.5"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                Open Full Admin Dashboard
-              </button>
-              <button
-                onClick={() => setShowAdminModal(false)}
-                className="px-4 py-2 bg-white/[0.05] hover:bg-black/20/20 text-white rounded-xl transition-colors font-medium text-xs"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-        <div
-          className={`fixed bottom-6 right-6 bg-[#09090B] border ${toastMsg?.err ? "border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.1)]" : "border-fuchsia-500/30 shadow-[0_0_20px_rgba(217,70,239,0.15)]"} rounded-xl px-5 py-3 text-sm font-semibold flex items-center gap-3 transition-all duration-300 z-[999] ${toastMsg ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-95 pointer-events-none"}`}
-        >
-          <div
-            className={`w-5 h-5 rounded-full flex items-center justify-center ${toastMsg?.err ? "bg-red-500" : "bg-gradient-to-r from-violet-600 to-fuchsia-600"}`}
-          >
-            {toastMsg?.err ? (
-              <X className="w-3 h-3 text-white" />
-            ) : (
-              <Check className="w-3 h-3 text-white" />
-            )}
-          </div>
-          <span className={toastMsg?.err ? "text-red-400" : "text-fuchsia-100"}>{toastMsg?.msg}</span>
-        </div>
-      </div>
+  if (view === "admin") {
+    return (
+      <>
+        <AdminLayout
+          db={db}
+          isAdminAuth={isAdminAuth}
+          onSecretLoginSuccess={() => {
+            setIsAdminAuth(true);
+            showToast("Admin access authenticated");
+          }}
+          onNavigateHome={() => setView("feed")}
+          onExportData={() => navigate("/admin/export")}
+          renderLinkManagerContent={renderLinkManagerContent}
+        />
+        {renderActiveModal()}
+      </>
     );
   }
 
@@ -3254,6 +2803,47 @@ function MainApp() {
              </div>
         </main>
       </div>
+
+      {/* Floating Free Preview Bar for Guest Visitors */}
+      {!user && view === "feed" && showGuestBanner && (
+        <div className="fixed bottom-5 left-4 right-4 max-w-3xl mx-auto z-40 animate-fade-in-up">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-[#090b14]/95 backdrop-blur-xl border border-fuchsia-500/30 shadow-[0_10px_40px_rgba(217,70,239,0.25)] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center text-white shrink-0 shadow-md">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 text-left">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white tracking-wide">
+                    Free Guest Preview Active
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30">
+                    500+ Resources
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 truncate sm:whitespace-normal">
+                  Enjoying the library? Sign up in 5 seconds to unlock unlimited labs, videos & progress tracking.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              <button
+                onClick={() => openAuthModal('signup', 'Join 1,200+ engineers unlocking 500+ DevOps resources for free.')}
+                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold text-xs transition-all shadow-md shadow-fuchsia-900/30 cursor-pointer"
+              >
+                ⚡ Create Free Account
+              </button>
+              <button
+                onClick={() => setShowGuestBanner(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                title="Dismiss preview notice"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {renderActiveModal()}
 
