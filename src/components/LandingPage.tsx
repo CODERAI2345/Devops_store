@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from "motion/react";
 import { LogoIcon } from './LogoIcon';
 import { UserNav } from './UserNav';
-import { useAuth } from '../context/AuthContext';
 import { K8sPods, Terminal, Pipeline, CloudTraffic } from './DevOpsAnimations';
 import {
   AwsLogo,
@@ -218,29 +217,11 @@ export function WordScrollFade({
 }
 
 export default function LandingPage({ setView, onSelectTab }: { setView: (v: string) => void; onSelectTab?: (tab: string) => void }) {
-  const { user, openAuthModal } = useAuth();
-  const [pendingTargetTab, setPendingTargetTab] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterFeedback, setNewsletterFeedback] = useState<{ msg: string; err?: boolean } | null>(null);
 
-  // If user signs in after requesting to browse library, automatically navigate to feed
-  React.useEffect(() => {
-    if (user && pendingTargetTab !== null) {
-      if (pendingTargetTab && onSelectTab) {
-        onSelectTab(pendingTargetTab);
-      }
-      setView('feed');
-      setPendingTargetTab(null);
-    }
-  }, [user, pendingTargetTab, onSelectTab, setView]);
-
   const handleBrowseLibrary = (targetTab: string = '') => {
-    if (!user) {
-      setPendingTargetTab(targetTab || '');
-      openAuthModal('login', 'Please sign in with GitHub, Google, or your Mobile number to access the free DevOps library.');
-      return;
-    }
     if (targetTab && onSelectTab) {
       onSelectTab(targetTab);
     }

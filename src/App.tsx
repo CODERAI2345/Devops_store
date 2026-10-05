@@ -248,20 +248,12 @@ const FeedCardItem = React.memo(function FeedCardItem({
               e.stopPropagation();
               if (onUnlockPrompt) onUnlockPrompt();
             }}
-            className="absolute inset-0 z-20 backdrop-blur-[2px] bg-[#070913]/65 hover:bg-[#070913]/80 transition-all rounded-2xl border border-white/10 flex flex-col items-center justify-center p-4 text-center cursor-pointer group/overlay shadow-inner"
+            className="absolute inset-0 z-20 backdrop-blur-[2.5px] bg-[#070913]/60 hover:bg-[#070913]/75 transition-all rounded-2xl border border-white/5 flex flex-col items-center justify-center p-4 text-center cursor-pointer group/overlay"
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center text-white mb-2 shadow-lg shadow-fuchsia-900/40 group-hover/overlay:scale-110 transition-transform">
-              <Lock className="w-5 h-5" />
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.08] group-hover/overlay:bg-white/[0.14] border border-white/10 text-xs font-medium text-slate-200 transition-all shadow-sm">
+              <Lock className="w-3.5 h-3.5 text-slate-400 group-hover/overlay:text-white transition-colors" />
+              <span> Free Sign in to unlock premium content </span>
             </div>
-            <span className="text-xs font-bold text-white tracking-wide mb-1 flex items-center gap-1">
-              Free Member Resource
-            </span>
-            <span className="text-[11px] text-slate-300 max-w-[210px] leading-tight mb-3 line-clamp-2">
-              Sign up in 5 seconds to unlock full video, hands-on lab guide & links
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 group-hover/overlay:bg-white/20 text-white border border-white/20 transition-all">
-              <Sparkles className="w-3 h-3 text-fuchsia-400" /> Unlock Free
-            </span>
           </div>
         )}
       </div>
@@ -282,9 +274,8 @@ function MainApp() {
     : "landing";
   const setView = (v: string) => navigate(v === "landing" ? "/" : v === "admin" ? "/admin" : v === "dashboard" ? "/dashboard" : `/${v}`);
 
-  // Guest Free Preview Configuration
-  const [showGuestBanner, setShowGuestBanner] = useState(true);
-  const GUEST_PREVIEW_LIMIT = 6;
+  // Free Preview Configuration (Top 3 resources accessible before registration)
+  const PREVIEW_LIMIT = 3;
 
   const {
     db,
@@ -775,34 +766,39 @@ function MainApp() {
 
     setLoading(true);
     let t: ItemType;
-    const activeTab = view === "admin" ? adminTab : currentTab;
-    if (activeTab === "ypl" || url.includes("playlist?list=") || url.includes("/playlist/") || ((url.includes("youtube.com") || url.includes("youtu.be")) && url.includes("list="))) {
-      t = "ypl";
-    } else if (isThreadsUrl(url)) {
-      t = "th";
-    } else if (isInstagramUrl(url)) {
-      if (activeTab === "ig") {
-        // If adding from Instagram Reels section, route to 'ig' (Reels)
-        t = "ig";
-      } else if (isInstagramReelUrl(url)) {
-        // Explicit reel URL paths always route to 'ig' (Reels)
-        t = "ig";
-      } else if (activeTab === "igp") {
-        // Explicitly on Posts tab
-        t = "igp";
-      } else {
-        // Check URL classification
-        const detected = classifyUrl(url);
-        t = (detected === "igp" ? "igp" : "ig") as ItemType;
+    if (view === "admin") {
+      t = adminTab;
+      if (adminTab === "yt" && (url.includes("playlist?list=") || url.includes("/playlist/"))) {
+        t = "ypl";
+      } else if (adminTab === "yt" && url.includes("/shorts/")) {
+        t = "ys";
       }
     } else {
-      const detected = classifyUrl(url);
-      if (detected && detected !== "web") {
-        t = detected as ItemType;
-      } else if (activeTab === "blog" || activeTab === "lab" || activeTab === "web") {
-        t = activeTab;
+      const activeTab = currentTab;
+      if (activeTab === "ypl" || url.includes("playlist?list=") || url.includes("/playlist/") || ((url.includes("youtube.com") || url.includes("youtu.be")) && url.includes("list="))) {
+        t = "ypl";
+      } else if (isThreadsUrl(url)) {
+        t = "th";
+      } else if (isInstagramUrl(url)) {
+        if (activeTab === "ig") {
+          t = "ig";
+        } else if (isInstagramReelUrl(url)) {
+          t = "ig";
+        } else if (activeTab === "igp") {
+          t = "igp";
+        } else {
+          const detected = classifyUrl(url);
+          t = (detected === "igp" ? "igp" : "ig") as ItemType;
+        }
       } else {
-        t = (detected || activeTab || "web") as ItemType;
+        const detected = classifyUrl(url);
+        if (detected && detected !== "web") {
+          t = detected as ItemType;
+        } else if (activeTab === "blog" || activeTab === "lab" || activeTab === "web") {
+          t = activeTab;
+        } else {
+          t = (detected || activeTab || "web") as ItemType;
+        }
       }
     }
     showToast("Fetching metadata...");
@@ -1220,11 +1216,11 @@ function MainApp() {
       const item: any = {
         id,
         type: t,
-        url: meta.url,
+        url: meta.url || url,
         date,
         ts: id,
-        title: meta.title,
-        author: meta.author,
+        title: meta.title || url,
+        author: meta.author || "",
         thumbnail: meta.thumbnail || "",
         description: meta.description || "",
         tags: meta.tags || [],
@@ -1278,6 +1274,7 @@ function MainApp() {
       await addItem(t as ItemType, item);
       showToast("Link added successfully!");
       setAddInput("");
+      setShowAdminModal(false);
       if (view !== "admin") {
         setCurrentTab(t as ItemType);
       } else {
@@ -1318,8 +1315,9 @@ function MainApp() {
           progressStatus: "not_started",
           shortcode: (t === "ig" || t === "igp") ? extractInstagramShortcode(url) || null : t === "th" ? extractThreadsShortcode(url) || null : null,
         } as any);
-        showToast("Added link (metadata fetch failed)");
+        showToast("Added link!");
         setAddInput("");
+        setShowAdminModal(false);
         if (view !== "admin") {
           setCurrentTab(t as ItemType);
         } else {
@@ -1380,26 +1378,6 @@ function MainApp() {
     if (!item) {
       setSelectedItem(null);
       return;
-    }
-
-    // Guest preview gating: allow up to 2 free detail modal views before prompting registration
-    if (!user) {
-      let currentViews = 0;
-      try {
-        currentViews = parseInt(localStorage.getItem('devops_preview_views_count') || '0', 10);
-      } catch {
-        currentViews = 0;
-      }
-
-      if (currentViews >= 2) {
-        openAuthModal('signup', `You've explored ${currentViews} free preview guides! Create your free account in 5 seconds to unlock unlimited access to all 500+ DevOps resources.`);
-        return;
-      }
-      try {
-        localStorage.setItem('devops_preview_views_count', (currentViews + 1).toString());
-      } catch {
-        // ignore
-      }
     }
 
     // Premium Content Gating
@@ -1562,7 +1540,7 @@ function MainApp() {
           {/* Results Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
             {displayItems.map((item: any, idx: number) => {
-              const isGated = !user && idx >= GUEST_PREVIEW_LIMIT;
+              const isGated = !user && idx >= PREVIEW_LIMIT;
               return (
                 <FeedCardItem
                   key={`${item.type || tabToRender}-${item.id}`}
@@ -1699,7 +1677,7 @@ function MainApp() {
       <div className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
           {items.map((item: any, idx: number) => {
-            const isGated = !user && idx >= GUEST_PREVIEW_LIMIT;
+            const isGated = !user && idx >= PREVIEW_LIMIT;
             return (
               <FeedCardItem
                 key={item.id}
@@ -1718,33 +1696,19 @@ function MainApp() {
           })}
         </div>
 
-        {!user && items.length > GUEST_PREVIEW_LIMIT && (
-          <div className="mt-8 p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-[#120d24] via-[#090b14] to-[#120d24] border border-fuchsia-500/30 text-center relative overflow-hidden shadow-2xl">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(217,70,239,0.15),transparent_70%)] pointer-events-none" />
-            <div className="relative z-10 max-w-xl mx-auto space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-400 flex items-center justify-center mx-auto shadow-inner">
-                <Lock className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                Unlock {items.length - GUEST_PREVIEW_LIMIT}+ more {GLOBAL_SECTION_META[tabToRender]?.name || 'DevOps'} resources
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Join engineers exploring production architectures, Kubernetes hands-on labs, and real-world system designs. 100% Free forever with Google, GitHub, or Phone.
-              </p>
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-                <button
-                  onClick={() => openAuthModal('signup', `Create your free account to unlock all ${items.length} ${GLOBAL_SECTION_META[tabToRender]?.name || 'resources'} instantly.`)}
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold text-sm shadow-xl shadow-fuchsia-900/40 transition-all cursor-pointer"
-                >
-                  ⚡ Unlock All Resources Free
-                </button>
-                <button
-                  onClick={() => openAuthModal('login')}
-                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-white text-xs font-semibold border border-white/10 transition-colors cursor-pointer"
-                >
-                  Already have an account? Sign In
-                </button>
-              </div>
+        {!user && items.length > PREVIEW_LIMIT && (
+          <div className="mt-8 p-6 rounded-2xl bg-white/[0.02] border border-white/10 text-center max-w-xl mx-auto space-y-3">
+            <p className="text-xs text-slate-400">
+              Showing 3 of {items.length} {GLOBAL_SECTION_META[tabToRender]?.name || 'resources'}. Sign in with Google, GitHub, or Phone for instant full access.
+            </p>
+            <div>
+              <button
+                onClick={() => openAuthModal('signup', `Sign in to access all ${items.length} ${GLOBAL_SECTION_META[tabToRender]?.name || 'resources'}.`)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-white text-xs font-semibold border border-white/10 transition-colors cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <span>View all {items.length} resources</span>
+              </button>
             </div>
           </div>
         )}
@@ -1907,12 +1871,17 @@ function MainApp() {
                   }}
                 />
                 <button
-                  className="px-6 py-2.5 bg-[#EDEDED] text-[#09090B] hover:bg-white font-medium rounded-md text-sm transition-colors disabled:opacity-50 flex items-center justify-center min-w-[100px] shadow-sm"
+                  type="button"
+                  className="px-6 py-2.5 bg-[#EDEDED] text-[#09090B] hover:bg-white font-semibold rounded-md text-sm transition-all disabled:opacity-50 flex items-center justify-center min-w-[110px] shadow-sm cursor-pointer disabled:cursor-not-allowed"
                   onClick={handleAddLink}
                   disabled={loading || !addInput.trim()}
+                  title={!addInput.trim() ? "Enter a URL to add" : "Add Link to collection"}
                 >
                   {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-black" />
+                      <span>Adding...</span>
+                    </div>
                   ) : (
                     "Add Link"
                   )}
@@ -2804,48 +2773,7 @@ function MainApp() {
         </main>
       </div>
 
-      {/* Floating Free Preview Bar for Guest Visitors */}
-      {!user && view === "feed" && showGuestBanner && (
-        <div className="fixed bottom-5 left-4 right-4 max-w-3xl mx-auto z-40 animate-fade-in-up">
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-[#090b14]/95 backdrop-blur-xl border border-fuchsia-500/30 shadow-[0_10px_40px_rgba(217,70,239,0.25)] flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center text-white shrink-0 shadow-md">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 text-left">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white tracking-wide">
-                    Free Guest Preview Active
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30">
-                    500+ Resources
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-300 truncate sm:whitespace-normal">
-                  Enjoying the library? Sign up in 5 seconds to unlock unlimited labs, videos & progress tracking.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-              <button
-                onClick={() => openAuthModal('signup', 'Join 1,200+ engineers unlocking 500+ DevOps resources for free.')}
-                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold text-xs transition-all shadow-md shadow-fuchsia-900/30 cursor-pointer"
-              >
-                ⚡ Create Free Account
-              </button>
-              <button
-                onClick={() => setShowGuestBanner(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                title="Dismiss preview notice"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {renderActiveModal()}
+       {renderActiveModal()}
 
       {/* Admin Quick Add Modal Dialog */}
       {showAdminModal && (
@@ -2931,11 +2859,11 @@ function MainApp() {
                     }}
                   />
                   <button
-                    className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-black font-semibold rounded-xl text-sm transition-all duration-300 disabled:opacity-50 flex items-center justify-center min-w-[110px] shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+                    className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-medium rounded-xl text-sm transition-all disabled:opacity-50 flex items-center justify-center min-w-[110px] cursor-pointer shadow-md"
                     onClick={handleAddLink}
                     disabled={loading || !addInput.trim()}
                   >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Link"}
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Link"}
                   </button>
                 </div>
               </div>
@@ -3120,7 +3048,6 @@ function MainApp() {
         <span className={toastMsg?.err ? "text-red-400" : "text-fuchsia-100"}>{toastMsg?.msg}</span>
       </div>
 
-      
       {/* Global Auth Modal for Protected Content & Logins */}
       <AuthModal />
 

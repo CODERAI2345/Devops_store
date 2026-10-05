@@ -125,7 +125,7 @@ export default function AdminLayout({
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
               This area is strictly restricted to authorized platform administrators. You are currently signed in as{' '}
               <span className="text-white font-mono font-medium">
-                {user?.email || profile?.name || 'an unauthenticated guest'}
+                {user?.email || profile?.name || 'Not signed in'}
               </span>
               .
             </p>

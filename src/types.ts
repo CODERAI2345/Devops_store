@@ -160,11 +160,14 @@ export interface UserProfile {
   uid: string;
   email?: string | null;
   name: string;
+  displayName?: string;
+  photoURL?: string | null;
   role?: "admin" | "user";
   status?: "active" | "suspended" | "inactive";
-  mobile_number: string | null;
-  provider: "github" | "google" | "phone" | "password" | "email" | "phone_shadow";
+  mobile_number?: string | null;
+  provider: string;
   createdAt: any;
+  lastLogin?: any;
   last_login?: any;
   isDemo?: boolean;
 }

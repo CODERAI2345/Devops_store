@@ -25,10 +25,10 @@ export const UserNav: React.FC = () => {
     return (
       <button
         onClick={() => openAuthModal('login')}
-        className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-md shadow-fuchsia-900/20 transition-all cursor-pointer shrink-0"
+        className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 transition-colors cursor-pointer shrink-0"
       >
-        <LogIn className="w-3.5 h-3.5" />
-        <span>Log In</span>
+        <LogIn className="w-3.5 h-3.5 text-slate-400" />
+        <span>Sign In</span>
       </button>
     );
   }
