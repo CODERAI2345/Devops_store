@@ -57,6 +57,7 @@ import { AuthModal } from "./components/AuthModal";
 import { UserNav } from "./components/UserNav";
 import { UserDashboard } from "./components/UserDashboard";
 import AdminLayout from "./components/admin/AdminLayout";
+import { isUserAdmin } from "./lib/adminAnalytics";
 import { analyticsEvents } from "./lib/posthog";
 import { ItemType, HubItem } from "./types";
 // Removed gemini import
@@ -264,7 +265,7 @@ const FeedCardItem = React.memo(function FeedCardItem({
 function MainApp() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, openAuthModal, loading: authLoading } = useAuth();
+  const { user, profile, openAuthModal, loading: authLoading } = useAuth();
   const view = location.pathname.startsWith("/admin") 
     ? "admin" 
     : location.pathname === "/dashboard" 
@@ -343,6 +344,11 @@ function MainApp() {
 
   // Auth State
   const [isAdminAuth, setIsAdminAuth] = useState(() => localStorage.getItem("adminAuth") === "true");
+  const isEffectiveAdmin = Boolean(
+    profile?.role === "admin" ||
+    (user?.email && isUserAdmin(user.email, profile?.role)) ||
+    isAdminAuth
+  );
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -1788,7 +1794,7 @@ function MainApp() {
         <Modal
           key={selectedItem.id}
           item={selectedItem}
-          isAdmin={isAdminAuth}
+          isAdmin={isEffectiveAdmin}
           defaultEditing={modalDefaultEditing}
           onClose={() => { setSelectedItem(null); setModalDefaultEditing(false); }}
           onStar={() => {
@@ -2401,7 +2407,7 @@ function MainApp() {
       <>
         <AdminLayout
           db={db}
-          isAdminAuth={isAdminAuth}
+          isAdminAuth={isEffectiveAdmin}
           onSecretLoginSuccess={() => {
             setIsAdminAuth(true);
             showToast("Admin access authenticated");

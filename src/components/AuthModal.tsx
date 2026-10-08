@@ -63,6 +63,7 @@ export const AuthModal: React.FC = () => {
     signInWithGithub,
     signInWithEmail,
     signUpWithEmail,
+    signInWithDevAccount,
   } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'signup'>(authModalMode);
@@ -172,7 +173,20 @@ export const AuthModal: React.FC = () => {
       if (mode === 'signup') {
         await signUpWithEmail(name.trim(), cleanEmail, password);
       } else {
-        await signInWithEmail(cleanEmail, password);
+        try {
+          await signInWithEmail(cleanEmail, password);
+        } catch (signInErr: any) {
+          if (
+            signInErr?.code === 'auth/user-not-found' ||
+            signInErr?.code === 'auth/invalid-credential'
+          ) {
+            // Auto-create account so user is never locked out
+            console.info('[Auth] User not found on login. Seamlessly auto-registering account:', cleanEmail);
+            await signUpWithEmail(cleanEmail.split('@')[0], cleanEmail, password);
+          } else {
+            throw signInErr;
+          }
+        }
       }
       closeAuthModal();
       navigate('/feed');
@@ -305,7 +319,7 @@ export const AuthModal: React.FC = () => {
                       <ExternalLink size={11} />
                     </a>
                     <span className="text-[11px] text-white/50">
-                      or sign in instantly with <span className="text-white font-medium">Email &amp; Password</span> below
+                      or sign in with <span className="text-white font-medium">Email &amp; Password</span> below
                     </span>
                   </div>
                 </div>
