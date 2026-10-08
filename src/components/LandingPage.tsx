@@ -32,7 +32,6 @@ import {
   Network,
   Search,
   Server,
-  Settings,
   Shield,
   Sun,
   Users,
@@ -287,15 +286,6 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
           <div className="hidden items-center gap-4 md:flex">
             <UserNav />
 
-            <button
-              onClick={() => setView('admin')}
-              title="Admin Dashboard"
-              aria-label="Admin Dashboard"
-              className="rounded-full border border-white/10 p-3 text-slate-100 hover:bg-white/[0.03] transition-colors cursor-pointer"
-            >
-              <Settings size={18} />
-            </button>
-
             <div className="relative inline-flex group rounded-xl">
               <div className="absolute inset-0 overflow-hidden rounded-xl">
                 <div className="absolute inset-[-100%] animate-[spin_2.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#1e1b4b_0%,#1e1b4b_50%,#e879f9_80%,#ffffff_100%)] opacity-90" />
@@ -329,15 +319,6 @@ export default function LandingPage({ setView, onSelectTab }: { setView: (v: str
               <a href="#overview" onClick={() => setMobileMenu(false)} className="hover:text-fuchsia-400 transition-colors">What's Inside</a>
               <a href="#architecture" onClick={() => setMobileMenu(false)} className="hover:text-fuchsia-400 transition-colors">AWS Architecture</a>
               <a href="#learn" onClick={() => setMobileMenu(false)} className="hover:text-fuchsia-400 transition-colors">Why CentralHub</a>
-              <button
-                onClick={() => {
-                  setMobileMenu(false);
-                  setView('admin');
-                }}
-                className="flex items-center gap-2 text-left text-slate-300 hover:text-white transition-colors"
-              >
-                <Settings size={16} /> Admin Portal
-              </button>
               <button
                 onClick={() => {
                   setMobileMenu(false);

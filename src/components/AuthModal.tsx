@@ -14,11 +14,8 @@ import {
   EyeOff,
   ShieldCheck,
   Check,
-  Copy,
-  ExternalLink,
 } from 'lucide-react';
 import { LogoIcon } from './LogoIcon';
-import firebaseConfig from '../../firebase-applet-config.json';
 
 /**
  * Standard Firebase Error Mapping
@@ -31,7 +28,7 @@ export function getReadableAuthErrorMessage(err: any): string {
     case 'auth/popup-blocked':
       return 'Your browser blocked the Google sign-in popup. Please allow popups for LinkVault.';
     case 'auth/unauthorized-domain':
-      return 'This website domain is not authorized for Google sign-in.';
+      return 'Google sign-in is currently unavailable on this domain. Please sign in with Email & Password below.';
     case 'auth/account-exists-with-different-credential':
       return 'An account already exists with another sign-in method. Please use your existing method to sign in.';
     case 'auth/network-request-failed':
@@ -74,7 +71,6 @@ export const AuthModal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [copiedDomain, setCopiedDomain] = useState(false);
 
   // Sync mode with authModalMode when opened
   React.useEffect(() => {
@@ -277,53 +273,6 @@ export const AuthModal: React.FC = () => {
                 <X className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
-              {(error.includes('authorized') || error.includes('unauthorized-domain')) && (
-                <div className="mt-2.5 pt-2.5 border-t border-red-500/20 space-y-2 text-white/90">
-                  <p className="text-[11px] leading-relaxed text-red-200/90">
-                    To use Google Sign-In, add this preview domain to your Firebase Console under <span className="text-white font-semibold">Authentication &gt; Settings &gt; Authorized Domains</span>:
-                  </p>
-                  <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 font-mono text-[11px] text-amber-300">
-                    <span className="truncate flex-1 select-all">{typeof window !== 'undefined' ? window.location.hostname : ''}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (typeof window !== 'undefined') {
-                          navigator.clipboard.writeText(window.location.hostname);
-                          setCopiedDomain(true);
-                          setTimeout(() => setCopiedDomain(false), 2000);
-                        }
-                      }}
-                      className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-medium shrink-0 transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      {copiedDomain ? (
-                        <>
-                          <Check size={11} className="text-emerald-400" />
-                          <span className="text-emerald-300">Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={11} />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                    <a
-                      href={`https://console.firebase.google.com/project/${firebaseConfig.projectId}/authentication/settings`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 text-[11px] font-medium transition-colors"
-                    >
-                      <span>Open Firebase Settings</span>
-                      <ExternalLink size={11} />
-                    </a>
-                    <span className="text-[11px] text-white/50">
-                      or sign in with <span className="text-white font-medium">Email &amp; Password</span> below
-                    </span>
-                  </div>
-                </div>
-              )}
               {signInWithGoogleRedirect && (error.includes('cancelled') || error.includes('blocked') || error.includes('popup')) && (
                 <div className="pl-6 pt-1 border-t border-red-500/20">
                   <button

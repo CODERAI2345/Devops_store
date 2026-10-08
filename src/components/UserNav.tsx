@@ -1,14 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { LogIn, LogOut, LayoutDashboard, Bookmark, CheckCircle2, ChevronDown, User as UserIcon } from 'lucide-react';
+import { LogIn, LogOut, Bookmark, CheckCircle2, ChevronDown, User as UserIcon } from 'lucide-react';
 
 export const UserNav: React.FC = () => {
   const { user, profile, logout, openAuthModal, userProgress, userBookmarks } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
-  const location = useLocation();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -81,26 +78,8 @@ export const UserNav: React.FC = () => {
             </div>
           </div>
 
-          {/* Links */}
-          <div className="space-y-0.5">
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                navigate('/dashboard');
-              }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
-                location.pathname === '/dashboard'
-                  ? 'bg-fuchsia-500/20 text-fuchsia-300'
-                  : 'text-white/80 hover:text-white hover:bg-white/[0.06]'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4 text-fuchsia-400" />
-              <span>Personal Dashboard</span>
-            </button>
-          </div>
-
           {/* Logout */}
-          <div className="border-t border-white/10 mt-1 pt-1">
+          <div className="pt-1">
             <button
               onClick={async () => {
                 setIsOpen(false);
