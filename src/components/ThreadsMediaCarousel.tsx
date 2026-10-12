@@ -15,6 +15,7 @@ import {
   ExternalLink,
   AlertCircle
 } from "lucide-react";
+import { extractThreadsShortcode } from "../utils";
 
 export interface ThreadsMediaItem {
   url: string;
@@ -117,6 +118,7 @@ interface ThreadsMediaCarouselProps {
   onMediaClick?: (media: ThreadsMediaItem, index: number) => void;
   className?: string;
   autoPlayVideo?: boolean;
+  onAllMediaError?: () => void;
 }
 
 export function ThreadsMediaCarousel({
@@ -125,8 +127,15 @@ export function ThreadsMediaCarousel({
   onMediaClick,
   className = "",
   autoPlayVideo = false,
+  onAllMediaError,
 }: ThreadsMediaCarouselProps) {
-  const mediaList = React.useMemo(() => extractThreadsMedia(item), [item]);
+  const [dynamicMedia, setDynamicMedia] = useState<ThreadsMediaItem[] | null>(null);
+  const mediaList = React.useMemo(() => {
+    if (dynamicMedia && dynamicMedia.length > 0) return dynamicMedia;
+    return extractThreadsMedia(item);
+  }, [item, dynamicMedia]);
+
+  const shortcode = item.shortcode || extractThreadsShortcode(item.url || "");
   const [emblaRef, emblaApi] = useEmblaCarousel(
     {
       loop: false,
@@ -145,9 +154,33 @@ export function ThreadsMediaCarousel({
   const [mediaErrors, setMediaErrors] = useState<{ [key: number]: boolean }>({});
   const [proxyAttempted, setProxyAttempted] = useState<{ [key: number]: boolean }>({});
   const [fullscreenMedia, setFullscreenMedia] = useState<ThreadsMediaItem | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({});
   const isDraggingRef = useRef(false);
+
+  // Auto-refresh fresh media metadata from Threads when any media fails or on initial load if empty
+  useEffect(() => {
+    const errorCount = Object.keys(mediaErrors).length;
+    if ((errorCount > 0 || mediaList.length === 0) && item?.url && !isRefreshing) {
+      setIsRefreshing(true);
+      fetch(`/api/threads-meta?url=${encodeURIComponent(item.url)}&refresh=true`)
+        .then((res) => res.json())
+        .then((json) => {
+          if (json?.success && json?.data?.media && json.data.media.length > 0) {
+            setDynamicMedia(json.data.media);
+            setMediaErrors({});
+            setProxyAttempted({});
+          }
+        })
+        .catch((err) => {
+          console.warn("Could not auto-refresh thread media:", err);
+        })
+        .finally(() => {
+          setIsRefreshing(false);
+        });
+    }
+  }, [mediaErrors, item?.url, mediaList.length, isRefreshing]);
 
   // Sync embla events
   const onSelect = useCallback(() => {
@@ -264,14 +297,101 @@ export function ThreadsMediaCarousel({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [variant, emblaApi]);
 
-  // If no media, return fallback placeholder
+  // If no media, render a clean native Threads card preview
   if (mediaList.length === 0) {
     return (
-      <div className={`w-full h-full flex flex-col items-center justify-center bg-black/40 text-white/40 p-6 text-center ${className}`}>
-        <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-3">
-          <ImageIcon className="w-6 h-6 text-white/30" />
+      <div className={`w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-white/[0.03] to-transparent p-6 text-center ${className}`}>
+        <div className="w-12 h-12 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center mb-3 text-white font-bold text-base shadow-lg shadow-violet-500/20">
+          @
         </div>
-        <span className="text-xs text-white/50">No media attachments</span>
+        <span className="text-sm font-semibold text-white truncate max-w-[260px] mb-1">
+          {item.author || "Threads Post"}
+        </span>
+        <p className="text-xs text-white/70 line-clamp-3 max-w-[260px] leading-relaxed mb-4">
+          {item.description || item.title || "View full thread discussion and updates."}
+        </p>
+        <div className="flex items-center gap-2">
+          {item?.url && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsRefreshing(false);
+                setMediaErrors({ 0: true });
+              }}
+              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs text-white font-medium border border-white/15 transition-colors cursor-pointer"
+            >
+              Fetch Media
+            </button>
+          )}
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-xs font-semibold shadow-md transition-all"
+          >
+            <span>Open on Threads</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Detect when all media slides truly failed
+  const allMediaFailed = mediaList.length > 0 && Object.keys(mediaErrors).length >= mediaList.length;
+
+  useEffect(() => {
+    if (allMediaFailed && onAllMediaError) {
+      onAllMediaError();
+    }
+  }, [allMediaFailed, onAllMediaError]);
+
+  // Clean native fallback card if all slides fail to load
+  if (allMediaFailed) {
+    return (
+      <div className={`w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-white/[0.04] to-black/60 p-6 text-center ${className}`}>
+        <div className="w-12 h-12 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center mb-3 text-white font-bold text-base shadow-lg shadow-violet-500/20">
+          @
+        </div>
+        <span className="text-sm font-semibold text-white truncate max-w-[260px] mb-1">
+          {item.author || "Threads Post"}
+        </span>
+        <p className="text-xs text-white/75 line-clamp-3 max-w-[280px] leading-relaxed mb-4">
+          {item.title && item.title !== "Threads Post" ? item.title : (item.description || "View post on Threads")}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMediaErrors({});
+              setProxyAttempted({});
+              if (item?.url) {
+                fetch(`/api/threads-meta?url=${encodeURIComponent(item.url)}&refresh=true`)
+                  .then(r => r.json())
+                  .then(j => {
+                    if (j?.data?.media) setDynamicMedia(j.data.media);
+                  })
+                  .catch(() => {});
+              }
+            }}
+            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs text-white font-medium border border-white/15 transition-colors cursor-pointer"
+          >
+            Retry Media
+          </button>
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-xs font-semibold shadow-md transition-all"
+          >
+            <span>Open on Threads</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
       </div>
     );
   }
@@ -323,7 +443,9 @@ export function ThreadsMediaCarousel({
           {mediaList.map((media, idx) => {
             const isError = mediaErrors[idx];
             const isProxied = !!proxyAttempted[idx];
-            const effectiveUrl = isProxied ? `/api/image-proxy?url=${encodeURIComponent(media.url)}` : media.url;
+            const effectiveUrl = isProxied
+              ? `/api/image-proxy?url=${encodeURIComponent(media.url)}&postUrl=${encodeURIComponent(item.url || '')}&slide=${idx}`
+              : media.url;
 
             return (
               <div
@@ -346,20 +468,39 @@ export function ThreadsMediaCarousel({
                 {/* Media Content */}
                 {isError ? (
                   <div className="relative z-10 flex flex-col items-center justify-center p-6 text-center max-w-[280px]">
-                    <div className="w-10 h-10 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-2">
-                      <span className="text-violet-400 font-bold text-sm">@</span>
+                    <div className="w-12 h-12 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center mb-3 text-white font-bold text-base shadow-lg shadow-violet-500/10">
+                      @
                     </div>
-                    <span className="text-xs text-white/80 font-medium">Threads Post Attachment</span>
-                    <p className="text-[11px] text-white/50 mt-1 line-clamp-2">{item.title || "View on Threads"}</p>
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-3 text-[11px] text-violet-400 hover:text-violet-300 flex items-center gap-1 underline"
-                    >
-                      View on Threads <ExternalLink className="w-3 h-3" />
-                    </a>
+                    <span className="text-xs text-white/90 font-semibold">{item.author || "Threads Post"}</span>
+                    <p className="text-[12px] text-white/60 mt-1 line-clamp-3 leading-relaxed">
+                      {item.title && item.title !== "Threads Post" ? item.title : (item.description || "View post on Threads")}
+                    </p>
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProxyAttempted((prev) => ({ ...prev, [idx]: true }));
+                          setMediaErrors((prev) => {
+                            const next = { ...prev };
+                            delete next[idx];
+                            return next;
+                          });
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-[11px] text-white font-medium border border-white/15 transition-colors cursor-pointer"
+                      >
+                        Reload Slide
+                      </button>
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="px-2.5 py-1 rounded-lg bg-violet-600/30 hover:bg-violet-600/50 text-[11px] text-violet-300 font-medium border border-violet-500/40 flex items-center gap-1 transition-colors"
+                      >
+                        Open <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
                   </div>
                 ) : media.type === "video" ? (
                   <div className="relative w-full h-full flex items-center justify-center bg-black">

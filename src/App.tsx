@@ -45,11 +45,13 @@ import {
   Lock,
   Bookmark,
   CheckCircle2,
+  Film,
 } from "lucide-react";
 import { YTCard, YPLCard, YSCard, LICard, LPCard, BlogCard, EmailCard, TWCard, GitCard, IGCard, THCard, WebCard, LabCard } from "./components/Cards";
 import { Modal } from "./components/Modal";
 import { InstagramModal } from "./components/InstagramModal";
 import { ThreadsModal } from "./components/ThreadsModal";
+import { ReelsVideoFeedModal } from "./components/ReelsVideoFeedModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useCentralHub } from "./hooks/useCentralHub";
 import { useAuth } from "./context/AuthContext";
@@ -304,6 +306,20 @@ function MainApp() {
 
   const [selectedItem, setSelectedItem] = useState<HubItem | null>(null);
   const [modalDefaultEditing, setModalDefaultEditing] = useState(false);
+  const [isReelsFeedOpen, setIsReelsFeedOpen] = useState(false);
+  const [reelsFeedInitialId, setReelsFeedInitialId] = useState<number | string | null>(null);
+
+  // Insta reel type feature is ONLY applicable in mobile version, never website/desktop version
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== "undefined" && window.innerWidth >= 768 && isReelsFeedOpen) {
+        setIsReelsFeedOpen(false);
+        setReelsFeedInitialId(null);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isReelsFeedOpen]);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [selectedLPTag, setSelectedLPTag] = useState("");
   const [selectedLabTag, setSelectedLabTag] = useState("");
@@ -1824,6 +1840,34 @@ function MainApp() {
     );
   };
 
+  const renderModals = () => (
+    <>
+      {renderActiveModal()}
+      {/* Insta reel type feed: strictly applicable in mobile version (<768px), not website/desktop */}
+      {isReelsFeedOpen && (
+        <ReelsVideoFeedModal
+          isOpen={isReelsFeedOpen}
+          initialItemId={reelsFeedInitialId}
+          items={[...(db.ig || []), ...(db.igp || []), ...(db.ys || []), ...(db.yt || [])]}
+          onClose={() => {
+            setIsReelsFeedOpen(false);
+            setReelsFeedInitialId(null);
+          }}
+          onStar={(it) => toggleStar(it.type, it.id)}
+          onCopy={(it) => {
+            navigator.clipboard.writeText(it.url || "");
+            showToast("Video link copied!");
+          }}
+          showToast={showToast}
+          onSelectNormalModal={(it) => {
+            setIsReelsFeedOpen(false);
+            setSelectedItem(it);
+          }}
+        />
+      )}
+    </>
+  );
+
   const renderLinkManagerContent = () => (
     <div className="space-y-6">
       {/* Category Pills */}
@@ -2416,7 +2460,7 @@ function MainApp() {
           onExportData={() => navigate("/admin/export")}
           renderLinkManagerContent={renderLinkManagerContent}
         />
-        {renderActiveModal()}
+        {renderModals()}
       </>
     );
   }
@@ -2425,7 +2469,7 @@ function MainApp() {
     return (
       <div className="min-h-screen bg-[#050810] text-white font-sans">
         <UserDashboard db={db} onSelectItem={handleSelectItem} />
-        {renderActiveModal()}
+        {renderModals()}
         <AuthModal />
       </div>
     );
@@ -2435,6 +2479,7 @@ function MainApp() {
     return (
       <Suspense fallback={<div className="min-h-screen bg-gradient-to-b from-[#0B0F19] to-[#050810] flex items-center justify-center text-white/50">Loading...</div>}>
         <LandingPage setView={setView} onSelectTab={(tab) => setCurrentTab(tab as ItemType)} />
+        {renderModals()}
         <AuthModal />
       </Suspense>
     );
@@ -2501,13 +2546,27 @@ function MainApp() {
       <div className="flex-1 relative z-10 max-h-screen overflow-y-auto">
         {/* Header */}
         <header className="sticky top-0 z-20 backdrop-blur-md bg-white/[0.03] border-b border-[#27272A] px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center justify-between w-full md:w-auto gap-4">
-                <button
-                  onClick={() => setView("landing")}
-                  className="md:hidden text-white/60 hover:text-white transition-colors"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
+            <div className="flex items-center justify-between w-full md:w-auto gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setView("landing")}
+                    className="md:hidden text-white/60 hover:text-white transition-colors"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReelsFeedInitialId(null);
+                      setIsReelsFeedOpen(true);
+                    }}
+                    className="md:hidden px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-600 via-rose-500 to-purple-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-pink-500/25 active:scale-95 transition-all"
+                    title="Watch Insta scrolling video feed"
+                  >
+                    <Film className="w-3.5 h-3.5" />
+                    <span>Watch Reels</span>
+                  </button>
+                </div>
                 <div className="md:hidden">
                   <UserNav />
                 </div>
@@ -2779,7 +2838,7 @@ function MainApp() {
         </main>
       </div>
 
-       {renderActiveModal()}
+       {renderModals()}
 
       {/* Admin Quick Add Modal Dialog */}
       {showAdminModal && (

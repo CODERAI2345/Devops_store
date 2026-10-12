@@ -36,6 +36,7 @@ export function ThreadsModal({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showEmbed, setShowEmbed] = useState(false);
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   const mediaList = React.useMemo(() => extractThreadsMedia(item), [item]);
 
@@ -73,19 +74,28 @@ export function ThreadsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-6"
       onTouchStart={(e) => {
-        // Only track outer modal swipe if starting near edges
-        if (e.touches[0].clientY < 100 || e.touches[0].clientX < 30 || e.touches[0].clientX > window.innerWidth - 30) {
-          touchStartX.current = e.touches[0].clientX;
-        }
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
       }}
       onTouchEnd={(e) => {
-        if (touchStartX.current === null) return;
-        const diff = touchStartX.current - e.changedTouches[0].clientX;
-        if (diff > 70 && onNext) onNext();
-        else if (diff < -70 && onPrev) onPrev();
+        if (touchStartX.current === null || touchStartY.current === null) return;
+        const diffX = touchStartX.current - e.changedTouches[0].clientX;
+        const diffY = e.changedTouches[0].clientY - touchStartY.current;
+
+        // Swipe down to dismiss on mobile
+        if (diffY > 90 && Math.abs(diffX) < 80) {
+          onClose();
+          touchStartX.current = null;
+          touchStartY.current = null;
+          return;
+        }
+
+        if (diffX > 70 && onNext) onNext();
+        else if (diffX < -70 && onPrev) onPrev();
         touchStartX.current = null;
+        touchStartY.current = null;
       }}
     >
       {/* Backdrop */}
@@ -93,6 +103,16 @@ export function ThreadsModal({
         className="absolute inset-0 bg-black/75 backdrop-blur-md animate-in fade-in duration-300"
         onClick={onClose}
       />
+
+      {/* FLOATING MOBILE CLOSE BUTTON - GUARANTEED ACCESSIBLE ON EVERY MOBILE SCREEN */}
+      <button
+        onClick={onClose}
+        className="sm:hidden absolute top-3 right-3 z-50 w-11 h-11 rounded-full bg-black/80 hover:bg-black text-white border border-white/25 flex items-center justify-center shadow-2xl active:scale-90 transition-all cursor-pointer"
+        aria-label="Close popup"
+        title="Close modal"
+      >
+        <X className="w-6 h-6 text-white" strokeWidth={2.5} />
+      </button>
 
       {/* Floating Desktop Prev/Next Post Buttons */}
       {onPrev && (
@@ -129,25 +149,33 @@ export function ThreadsModal({
         className="relative w-full max-w-[480px] max-h-[92vh] bg-[#070913] border border-white/15 rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 z-10 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile Swipe-Down Handle */}
+        <div 
+          className="w-full pt-2 pb-1 flex justify-center items-center bg-white/[0.03] cursor-grab active:cursor-grabbing sm:hidden"
+          onClick={onClose}
+        >
+          <div className="w-12 h-1.5 rounded-full bg-white/30" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 shrink-0 bg-[#0f1220]/90 backdrop-blur-md z-20">
-          <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-white/10 shrink-0 bg-[#0f1220]/90 backdrop-blur-md z-20 gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center font-bold text-sm text-white border border-violet-500/40 shrink-0">
               @
             </div>
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-white drop-shadow-md truncate">
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs sm:text-sm font-semibold text-white drop-shadow-md truncate max-w-[120px] sm:max-w-[170px]">
                   {item.author || "Threads"}
                 </span>
                 {currentIndex && totalCount ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300 font-mono">
-                    {currentIndex} / {totalCount}
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-slate-300 font-mono shrink-0">
+                    {currentIndex}/{totalCount}
                   </span>
                 ) : null}
               </div>
               {item.heading && (
-                <span className="text-[11px] text-emerald-400 font-medium truncate max-w-[200px]">
+                <span className="text-[10px] text-emerald-400 font-medium truncate max-w-[130px]">
                   {item.heading}
                 </span>
               )}
@@ -158,26 +186,26 @@ export function ThreadsModal({
             {/* Mobile Prev / Next Buttons */}
             {onPrev && (
               <button
-                className="sm:hidden w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-white/5 border border-white/10"
+                className="sm:hidden w-7 h-7 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-white/5 border border-white/10"
                 onClick={onPrev}
                 title="Previous Post"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
             )}
             {onNext && (
               <button
-                className="sm:hidden w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-white/5 border border-white/10"
+                className="sm:hidden w-7 h-7 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-white/5 border border-white/10"
                 onClick={onNext}
                 title="Next Post"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             )}
 
             {item.shortcode && (
               <button
-                className={`px-2 py-1 rounded-md text-[11px] font-medium transition-colors border flex items-center gap-1 ${
+                className={`px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-medium transition-colors border flex items-center gap-1 ${
                   showEmbed
                     ? "bg-violet-600 text-white border-violet-400"
                     : "bg-white/5 text-white/70 hover:text-white border-white/10"
@@ -191,7 +219,7 @@ export function ThreadsModal({
             )}
 
             <button
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors border ${
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-colors border ${
                 item.starred
                   ? "text-amber-400 bg-amber-400/20 border-amber-400/30 shadow-[0_0_10px_rgba(251,191,36,0.3)]"
                   : "text-white/70 hover:text-white hover:bg-white/10 border-transparent bg-white/5"
@@ -199,25 +227,27 @@ export function ThreadsModal({
               onClick={onStar}
               title={item.starred ? "Unstar" : "Star"}
             >
-              <Star className="w-4 h-4" fill={item.starred ? "currentColor" : "none"} />
+              <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill={item.starred ? "currentColor" : "none"} />
             </button>
 
             <button
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors bg-white/5"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors bg-white/5"
               onClick={onCopy}
               title="Copy Link"
             >
-              <Copy className="w-4 h-4" />
+              <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
             <div className="w-px h-5 bg-white/10 mx-0.5" />
 
+            {/* Standard Header Close Button - Prioritized & Highly Clickable */}
             <button
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors bg-white/5"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white/90 hover:text-white bg-white/10 hover:bg-white/20 active:bg-white/30 transition-all border border-white/20 cursor-pointer shrink-0"
               onClick={onClose}
-              title="Close"
+              title="Close modal"
+              aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-white" strokeWidth={2.2} />
             </button>
           </div>
         </div>
@@ -300,7 +330,13 @@ export function ThreadsModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-white/10 bg-[#0f1220]/90 backdrop-blur-md flex items-center gap-3 shrink-0 z-20">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-white/10 bg-[#0f1220]/90 backdrop-blur-md flex items-center gap-3 shrink-0 z-20">
+          <button
+            onClick={onClose}
+            className="sm:hidden px-3.5 py-3 rounded-xl bg-white/10 text-white/80 hover:text-white text-xs font-semibold flex items-center gap-1.5 border border-white/10"
+          >
+            <X className="w-4 h-4" /> Close
+          </button>
           <a
             href={item.url}
             target="_blank"

@@ -194,29 +194,62 @@ export const AuthModal: React.FC = () => {
     }
   };
 
+  const touchStartY = React.useRef<number | null>(null);
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4"
+      onTouchStart={(e) => {
+        touchStartY.current = e.touches[0].clientY;
+      }}
+      onTouchEnd={(e) => {
+        if (touchStartY.current === null) return;
+        const diffY = e.changedTouches[0].clientY - touchStartY.current;
+        if (diffY > 90) {
+          closeAuthModal();
+        }
+        touchStartY.current = null;
+      }}
+    >
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity"
         onClick={closeAuthModal}
       />
 
+      {/* FLOATING MOBILE CLOSE BUTTON */}
+      <button
+        onClick={closeAuthModal}
+        className="sm:hidden absolute top-3 right-3 z-50 w-11 h-11 rounded-full bg-black/80 hover:bg-black text-white border border-white/25 flex items-center justify-center shadow-2xl active:scale-90 transition-all cursor-pointer"
+        aria-label="Close popup"
+        title="Close"
+      >
+        <X className="w-6 h-6 text-white" strokeWidth={2.5} />
+      </button>
+
       {/* Modal Dialog */}
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] shadow-2xl shadow-purple-500/10 text-white animate-fade-in-up">
+        {/* Mobile Drag Indicator */}
+        <div 
+          className="w-full pt-2 pb-1 flex justify-center items-center bg-white/[0.02] cursor-grab sm:hidden"
+          onClick={closeAuthModal}
+        >
+          <div className="w-12 h-1.5 rounded-full bg-white/30" />
+        </div>
+
         {/* Glow header banner */}
-        <div className="relative px-6 pt-6 pb-4 border-b border-white/10 bg-gradient-to-b from-purple-500/10 via-transparent to-transparent">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
+        <div className="relative px-6 pt-5 pb-4 border-b border-white/10 bg-gradient-to-b from-purple-500/10 via-transparent to-transparent">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
               <LogoIcon size={30} />
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
                   <span>DevOps Store</span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30">
                     Vault ID
                   </span>
                 </h3>
-                <p className="text-xs text-white/50">
+                <p className="text-xs text-white/50 truncate">
                   {mode === 'login' ? 'Sign in to access interactive roadmaps & bookmarks' : 'Create your free account in seconds'}
                 </p>
               </div>
@@ -224,10 +257,10 @@ export const AuthModal: React.FC = () => {
 
             <button
               onClick={closeAuthModal}
-              className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/[0.08] transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white/90 hover:text-white bg-white/10 hover:bg-white/20 active:bg-white/30 transition-all border border-white/20 cursor-pointer shrink-0"
               aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-white" strokeWidth={2.2} />
             </button>
           </div>
 

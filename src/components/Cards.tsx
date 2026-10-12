@@ -1,4 +1,4 @@
-import { getLinkedInEmbedUrl, extractTopicFromLinkedInUrl, getLabDifficultyBadge, getPlaylistThumbnail } from "../utils";
+import { getLinkedInEmbedUrl, extractTopicFromLinkedInUrl, getLabDifficultyBadge, getPlaylistThumbnail, extractThreadsShortcode } from "../utils";
 import React from "react";
 import { ThreadsMediaCarousel, extractThreadsMedia } from "./ThreadsMediaCarousel";
 import {
@@ -29,6 +29,7 @@ import {
   Sparkles,
   CheckCircle2,
   Lock,
+  Film,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -1183,7 +1184,7 @@ export const THCard = React.memo(function THCard({ item, onStar, onDelete, onCop
               allow="encrypted-media"
             />
           </div>
-        ) : mediaList.length > 0 ? (
+        ) : (
           <div className="flex-1 min-h-0 relative">
             <ThreadsMediaCarousel
               item={item}
@@ -1191,15 +1192,6 @@ export const THCard = React.memo(function THCard({ item, onStar, onDelete, onCop
               onMediaClick={() => onClick()}
               className="w-full h-full"
             />
-          </div>
-        ) : (
-          <div className="flex-1 p-6 flex flex-col justify-center items-center text-center bg-gradient-to-b from-white/[0.02] to-transparent">
-            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 mb-3">
-              @
-            </div>
-            <p className="text-white/80 text-sm italic line-clamp-4 leading-relaxed font-light">
-              "{cleanDescription || "View post on Threads"}"
-            </p>
           </div>
         )}
 

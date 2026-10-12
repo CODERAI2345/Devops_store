@@ -7,7 +7,7 @@ declare global {
     };
   }
 }
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   X, 
   Clock, 
@@ -59,6 +59,8 @@ export function Modal({
   const [editData, setEditData] = useState<any>(() => ({ ...(item || {}) }));
   const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
   const [isRefreshingMeta, setIsRefreshingMeta] = useState(false);
+  const touchStartY = useRef<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   const completed = item ? isCompleted(item.id) : false;
   const bookmarked = item ? isBookmarked(item.id) : false;
@@ -300,36 +302,75 @@ export function Modal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6"
+      onTouchStart={(e) => {
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+      }}
+      onTouchEnd={(e) => {
+        if (touchStartX.current === null || touchStartY.current === null) return;
+        const diffX = touchStartX.current - e.changedTouches[0].clientX;
+        const diffY = e.changedTouches[0].clientY - touchStartY.current;
+
+        // Swipe down to dismiss on mobile
+        if (diffY > 90 && Math.abs(diffX) < 80) {
+          onClose();
+          touchStartX.current = null;
+          touchStartY.current = null;
+          return;
+        }
+        touchStartX.current = null;
+        touchStartY.current = null;
+      }}
+    >
       {/* Backdrop overlay */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-md animate-in fade-in duration-300"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
         onClick={onClose}
       />
+
+      {/* FLOATING MOBILE CLOSE BUTTON - ALWAYS REACHABLE */}
+      <button
+        onClick={onClose}
+        className="sm:hidden absolute top-3 right-3 z-50 w-11 h-11 rounded-full bg-black/80 hover:bg-black text-white border border-white/25 flex items-center justify-center shadow-2xl active:scale-90 transition-all cursor-pointer"
+        aria-label="Close popup"
+        title="Close modal"
+      >
+        <X className="w-6 h-6 text-white" strokeWidth={2.5} />
+      </button>
       
       {/* Slide-over panel */}
       <div 
         role="dialog"
         aria-modal="true"
         aria-label={name}
-        className="relative w-full max-w-2xl max-h-[90vh] bg-[#060816] border border-white/10 rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 sm:max-w-[600px] xl:max-w-[700px] z-10 overflow-hidden"
+        className="relative w-full max-w-2xl max-h-[92vh] bg-[#060816] border border-white/10 rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 sm:max-w-[600px] xl:max-w-[700px] z-10 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile Swipe-Down Handle */}
+        <div 
+          className="w-full pt-2 pb-1 flex justify-center items-center bg-white/[0.03] cursor-grab active:cursor-grabbing sm:hidden"
+          onClick={onClose}
+        >
+          <div className="w-12 h-1.5 rounded-full bg-white/30" />
+        </div>
+
         {/* Header - Actions & Close */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0 bg-white/[0.02] backdrop-blur-md z-20">
-          <div className="flex items-center gap-3">
-             <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs font-bold text-emerald-400 border border-emerald-500/20">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-white/10 shrink-0 bg-white/[0.02] backdrop-blur-md z-20 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+             <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs font-bold text-emerald-400 border border-emerald-500/20 shrink-0">
                 {ini}
              </div>
-             {sub && <span className="text-sm font-medium text-white/60">{sub}</span>}
+             {sub && <span className="text-xs sm:text-sm font-medium text-white/60 truncate">{sub}</span>}
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {item && (
               <>
                 <button
                   type="button"
                   onClick={() => toggleProgress(item.id, item.title, item.type)}
-                  className={`text-xs font-semibold flex items-center gap-1.5 transition-all px-3 py-1.5 rounded-full border cursor-pointer ${
+                  className={`text-xs font-semibold flex items-center gap-1.5 transition-all px-2.5 sm:px-3 py-1.5 rounded-full border cursor-pointer ${
                     completed
                       ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
                       : "bg-white/[0.04] text-white/70 hover:text-white hover:bg-white/[0.08] border-white/10"
@@ -358,26 +399,30 @@ export function Modal({
             {isAdmin && (
               !isEditing ? (
                 <button
-                  className="text-xs font-semibold text-white/70 hover:text-white flex items-center gap-1.5 transition-colors px-3 py-1.5 rounded-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10"
+                  className="text-xs font-semibold text-white/70 hover:text-white flex items-center gap-1.5 transition-colors px-2.5 sm:px-3 py-1.5 rounded-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10"
                   onClick={() => setIsEditing(true)}
                 >
-                  <Edit2 className="w-3.5 h-3.5" /> Edit
+                  <Edit2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Edit</span>
                 </button>
               ) : (
                 <button
-                  className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 transition-colors px-3 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                  className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 transition-colors px-2.5 sm:px-3 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
                   onClick={handleSave}
                 >
-                  <Save className="w-3.5 h-3.5" /> Save
+                  <Save className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Save</span>
                 </button>
               )
             )}
             <div className="w-px h-5 bg-white/[0.05]"></div>
+            
+            {/* Highly clickable close button */}
             <button
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.05] transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white/90 hover:text-white bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 transition-all cursor-pointer shrink-0"
               onClick={onClose}
+              title="Close modal"
+              aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-white" strokeWidth={2.2} />
             </button>
           </div>
         </div>

@@ -31,175 +31,184 @@ async function startServer() {
     metaCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
   };
 
+  // Reusable Threads metadata scraper with support for cache busting
+  const scrapeThreadsMeta = async (rawUrl: string, forceFresh: boolean = false) => {
+    const cacheKey = `th:${rawUrl.trim().toLowerCase()}`;
+    if (!forceFresh) {
+      const cachedData = getCached(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+    }
+
+    let targetUrl = rawUrl.trim();
+    if (!targetUrl.startsWith("http")) {
+      targetUrl = `https://${targetUrl}`;
+    }
+
+    const response = await fetch(targetUrl, {
+      headers: {
+        "User-Agent": "facebookexternalhit/1.1 (compatible; ThreadsCrawler/1.0)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      redirect: "follow",
+    });
+
+    const html = await response.text();
+
+    const decodeHtmlEntities = (str: string): string => {
+      if (!str) return "";
+      return str
+        .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+        .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, '"')
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&#064;/g, "@")
+        .replace(/&#39;/g, "'");
+    };
+
+    const getOg = (prop: string) => {
+      const m = html.match(new RegExp('<meta[^>]+property=[\"\']' + prop + '[\"\'][^>]+content=[\"\']([^\"\']+)[\"\']', 'i'))
+        || html.match(new RegExp('<meta[^>]+content=[\"\']([^\"\']+)[\"\'][^>]+property=[\"\']' + prop + '[\"\']', 'i'));
+      return m ? decodeHtmlEntities(m[1]) : "";
+    };
+
+    const titleRaw = getOg("og:title") || (html.match(/<title[^>]*>([^<]+)<\/title>/i) || [])[1] || "Threads Post";
+    const title = decodeHtmlEntities(titleRaw).trim();
+    const description = getOg("og:description").trim();
+    const image = getOg("og:image");
+    const ogUrl = getOg("og:url");
+
+    const finalUrl = response.url || targetUrl;
+    const shortcodeMatch = html.match(/shortcode=([a-zA-Z0-9_-]+)/i)
+      || (ogUrl || "").match(/\/(?:t|post)\/([a-zA-Z0-9_-]+)/i)
+      || finalUrl.match(/\/(?:t|post)\/([a-zA-Z0-9_-]+)/i)
+      || targetUrl.match(/\/(?:t|post)\/([a-zA-Z0-9_-]+)/i);
+    const shortcode = shortcodeMatch ? shortcodeMatch[1] : "";
+
+    const authorMatch = (ogUrl || finalUrl).match(/@([a-zA-Z0-9_.-]+)/)
+      || title.match(/@([a-zA-Z0-9_.-]+)/);
+    const author = authorMatch ? `@${authorMatch[1]}` : (title.includes("on Threads") ? title.replace(/\s+on Threads.*/i, "") : "Threads User");
+
+    const media: Array<{ url: string; type: "image" | "video"; alt?: string; thumbnail?: string }> = [];
+    const images: string[] = [];
+
+    const cleanImage = image ? image.replace(/&amp;/g, "&") : "";
+
+    // Extract all carousel photos from Threads post HTML so multiple slides are scrollable
+    const imgMatches = html.match(/<img[\s\S]*?>/gi) || [];
+    for (const m of imgMatches) {
+      const isProfile = m.includes("t51.82787-19") || m.includes("sizes=\"36px\"") || m.includes("width=\"36\"") || m.includes("profile");
+      if (!isProfile) {
+        let highestResUrl = "";
+        const srcsetMatch = m.match(/srcSet="([^"]+)"/i) || m.match(/srcset="([^"]+)"/i);
+        if (srcsetMatch) {
+          const parts = srcsetMatch[1].split(",");
+          let maxW = 0;
+          for (const p of parts) {
+            const [srcPart, wStr] = p.trim().split(/\s+/);
+            const w = parseInt(wStr) || 0;
+            if (w >= maxW) {
+              maxW = w;
+              highestResUrl = srcPart.replace(/&amp;/g, "&");
+            }
+          }
+        }
+        if (!highestResUrl) {
+          const srcMatch = m.match(/src="([^"]+)"/i);
+          if (srcMatch) highestResUrl = srcMatch[1].replace(/&amp;/g, "&");
+        }
+        if (highestResUrl && !images.includes(highestResUrl)) {
+          images.push(highestResUrl);
+          media.push({
+            url: highestResUrl,
+            type: "image",
+            alt: description ? `${description.slice(0, 80)} (${images.length})` : `${title} (${images.length})`,
+          });
+        }
+      }
+    }
+
+    // If no carousel photos found but og:image exists, use it
+    if (images.length === 0 && cleanImage) {
+      images.push(cleanImage);
+      media.push({
+        url: cleanImage,
+        type: "image",
+        alt: description ? description.slice(0, 100) : title,
+      });
+    }
+
+    const ogVideo = getOg("og:video");
+    const cleanVideo = ogVideo ? ogVideo.replace(/&amp;/g, "&") : "";
+    if (cleanVideo) {
+      media.unshift({
+        url: cleanVideo,
+        type: "video",
+        thumbnail: cleanImage,
+        alt: description ? description.slice(0, 100) : title,
+      });
+    }
+
+    const thumbnail = cleanImage || (images.length > 0 ? images[0] : "");
+
+    const resultData = {
+      title: title || "Threads Post",
+      description: description || "",
+      thumbnail,
+      images,
+      media,
+      videoUrl: cleanVideo || undefined,
+      shortcode,
+      author,
+      canonicalUrl: ogUrl || finalUrl,
+    };
+
+    setCached(cacheKey, resultData);
+    return resultData;
+  };
+
   // Threads metadata extraction endpoint
   app.get("/api/threads-meta", async (req, res) => {
     const rawUrl = req.query.url as string;
+    const forceFresh = req.query.refresh === "true" || req.query.force === "true";
     if (!rawUrl) {
       return res.status(400).json({ error: "url query parameter is required" });
     }
 
-    const cacheKey = `th:${rawUrl.trim().toLowerCase()}`;
-    const cachedData = getCached(cacheKey);
-    if (cachedData) {
-      return res.json({ success: true, data: cachedData, cached: true });
-    }
-
     try {
-      let targetUrl = rawUrl.trim();
-      if (!targetUrl.startsWith("http")) {
-        targetUrl = `https://${targetUrl}`;
-      }
-
-      const response = await fetch(targetUrl, {
-        headers: {
-          "User-Agent": "facebookexternalhit/1.1 (compatible; ThreadsCrawler/1.0)",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.9",
-        },
-        redirect: "follow",
-      });
-
-      const html = await response.text();
-
-      const decodeHtmlEntities = (str: string): string => {
-        if (!str) return "";
-        return str
-          .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
-          .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-          .replace(/&amp;/g, "&")
-          .replace(/&quot;/g, '"')
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/&#064;/g, "@")
-          .replace(/&#39;/g, "'");
-      };
-
-      const getOg = (prop: string) => {
-        const m = html.match(new RegExp('<meta[^>]+property=[\"\']' + prop + '[\"\'][^>]+content=[\"\']([^\"\']+)[\"\']', 'i'))
-          || html.match(new RegExp('<meta[^>]+content=[\"\']([^\"\']+)[\"\'][^>]+property=[\"\']' + prop + '[\"\']', 'i'));
-        return m ? decodeHtmlEntities(m[1]) : "";
-      };
-
-      const titleRaw = getOg("og:title") || (html.match(/<title[^>]*>([^<]+)<\/title>/i) || [])[1] || "Threads Post";
-      const title = decodeHtmlEntities(titleRaw).trim();
-      const description = getOg("og:description").trim();
-      const image = getOg("og:image");
-      const ogUrl = getOg("og:url");
-
-      const finalUrl = response.url || targetUrl;
-      const shortcodeMatch = html.match(/shortcode=([a-zA-Z0-9_-]+)/i)
-        || (ogUrl || "").match(/\/(?:t|post)\/([a-zA-Z0-9_-]+)/i)
-        || finalUrl.match(/\/(?:t|post)\/([a-zA-Z0-9_-]+)/i)
-        || targetUrl.match(/\/(?:t|post)\/([a-zA-Z0-9_-]+)/i);
-      const shortcode = shortcodeMatch ? shortcodeMatch[1] : "";
-
-      const authorMatch = (ogUrl || finalUrl).match(/@([a-zA-Z0-9_.-]+)/)
-        || title.match(/@([a-zA-Z0-9_.-]+)/);
-      const author = authorMatch ? `@${authorMatch[1]}` : (title.includes("on Threads") ? title.replace(/\s+on Threads.*/i, "") : "Threads User");
-
-      const media: Array<{ url: string; type: "image" | "video"; alt?: string; thumbnail?: string }> = [];
-      const images: string[] = [];
-
-      const cleanImage = image ? image.replace(/&amp;/g, "&") : "";
-
-      // Extract all carousel photos from Threads post HTML so multiple slides are scrollable
-      const imgMatches = html.match(/<img[\s\S]*?>/gi) || [];
-      for (const m of imgMatches) {
-        const isProfile = m.includes("t51.82787-19") || m.includes("sizes=\"36px\"") || m.includes("width=\"36\"") || m.includes("profile");
-        if (!isProfile) {
-          let highestResUrl = "";
-          const srcsetMatch = m.match(/srcSet="([^"]+)"/i) || m.match(/srcset="([^"]+)"/i);
-          if (srcsetMatch) {
-            const parts = srcsetMatch[1].split(",");
-            let maxW = 0;
-            for (const p of parts) {
-              const [srcPart, wStr] = p.trim().split(/\s+/);
-              const w = parseInt(wStr) || 0;
-              if (w >= maxW) {
-                maxW = w;
-                highestResUrl = srcPart.replace(/&amp;/g, "&");
-              }
-            }
-          }
-          if (!highestResUrl) {
-            const srcMatch = m.match(/src="([^"]+)"/i);
-            if (srcMatch) highestResUrl = srcMatch[1].replace(/&amp;/g, "&");
-          }
-          if (highestResUrl && !images.includes(highestResUrl)) {
-            images.push(highestResUrl);
-            media.push({
-              url: highestResUrl,
-              type: "image",
-              alt: description ? `${description.slice(0, 80)} (${images.length})` : `${title} (${images.length})`,
-            });
-          }
-        }
-      }
-
-      // If no carousel photos found but og:image exists, use it
-      if (images.length === 0 && cleanImage) {
-        images.push(cleanImage);
-        media.push({
-          url: cleanImage,
-          type: "image",
-          alt: description ? description.slice(0, 100) : title,
-        });
-      }
-
-      const ogVideo = getOg("og:video");
-      const cleanVideo = ogVideo ? ogVideo.replace(/&amp;/g, "&") : "";
-      if (cleanVideo) {
-        media.unshift({
-          url: cleanVideo,
-          type: "video",
-          thumbnail: cleanImage,
-          alt: description ? description.slice(0, 100) : title,
-        });
-      }
-
-      const thumbnail = cleanImage || (images.length > 0 ? images[0] : "");
-
-      const resultData = {
-        title: title || "Threads Post",
-        description: description || "",
-        thumbnail,
-        images,
-        media,
-        videoUrl: cleanVideo || undefined,
-        shortcode,
-        author,
-        canonicalUrl: ogUrl || finalUrl,
-      };
-
-      setCached(cacheKey, resultData);
-
-      return res.json({
-        success: true,
-        data: resultData,
-      });
+      const data = await scrapeThreadsMeta(rawUrl, forceFresh);
+      return res.json({ success: true, data });
     } catch (err: any) {
       console.error("Threads meta fetch error:", err);
       return res.status(500).json({ error: err?.message || "Failed to fetch Threads metadata" });
     }
   });
 
-  // High-performance image proxy endpoint to bypass CORS / Referrer restrictions safely
+  // High-performance image proxy endpoint with auto-recovery for expired Meta signatures
   app.get("/api/image-proxy", async (req, res) => {
     const rawUrl = req.query.url as string;
+    const postUrl = req.query.postUrl as string;
+    const slideIdx = parseInt(req.query.slide as string, 10) || 0;
+
     if (!rawUrl || (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://"))) {
       return res.status(400).send("Invalid URL parameter");
     }
 
-    try {
-      const upstream = await fetch(rawUrl, {
+    const fetchAndStream = async (targetImgUrl: string) => {
+      const upstream = await fetch(targetImgUrl, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
           "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+          "Referer": "https://www.threads.net/",
         },
       });
 
       if (!upstream.ok) {
-        return res.status(upstream.status).send("Upstream image fetch failed");
+        return { ok: false, status: upstream.status };
       }
 
       const contentType = upstream.headers.get("content-type") || "image/jpeg";
@@ -208,7 +217,38 @@ async function startServer() {
       res.setHeader("Access-Control-Allow-Origin", "*");
 
       const arrayBuffer = await upstream.arrayBuffer();
-      return res.send(Buffer.from(arrayBuffer));
+      res.send(Buffer.from(arrayBuffer));
+      return { ok: true, status: 200 };
+    };
+
+    try {
+      let result = await fetchAndStream(rawUrl);
+
+      // If initial fetch failed with 403 (expired Meta signature) and postUrl was supplied, auto-heal!
+      if (!result.ok && result.status === 403 && postUrl) {
+        try {
+          const freshData = await scrapeThreadsMeta(postUrl, true);
+          let candidateUrl = "";
+          if (freshData?.media && freshData.media[slideIdx]?.url) {
+            candidateUrl = freshData.media[slideIdx].url;
+          } else if (freshData?.images && freshData.images[slideIdx]) {
+            candidateUrl = freshData.images[slideIdx];
+          } else if (freshData?.thumbnail) {
+            candidateUrl = freshData.thumbnail;
+          }
+
+          if (candidateUrl && candidateUrl !== rawUrl) {
+            const secondAttempt = await fetchAndStream(candidateUrl);
+            if (secondAttempt.ok) return;
+          }
+        } catch (healErr) {
+          console.warn("Auto-healing expired thread image failed:", healErr);
+        }
+      }
+
+      if (!result.ok) {
+        return res.status(result.status || 502).send("Upstream image fetch failed");
+      }
     } catch (err: any) {
       console.error("Image proxy error:", err.message);
       return res.status(500).send("Proxy error: " + err.message);

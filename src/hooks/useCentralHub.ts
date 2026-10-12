@@ -76,6 +76,13 @@ function getInitialDb(): { db: HubDB; hasCache: boolean } {
           parsed.yt = parsed.yt.filter((x: any) => x.type !== "ypl" && !x.pid && (!x.url || (!x.url.includes("list=") && !x.url.includes("/playlist"))));
           parsed.ypl = [...parsed.ypl, ...stuckPlaylists.map(x => ({ ...x, type: "ypl" as const }))];
         }
+        if (!parsed.th || !Array.isArray(parsed.th) || parsed.th.length === 0) {
+          parsed.th = [...SEED_THREADS_ITEMS];
+        }
+        if (!parsed.ig) parsed.ig = [];
+        if (!parsed.igp) parsed.igp = [];
+        if (!parsed.lab) parsed.lab = [];
+        if (!parsed.web) parsed.web = [];
         return { db: parsed, hasCache: true };
       }
     }
